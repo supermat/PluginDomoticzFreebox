@@ -30,6 +30,7 @@ Pour mettre à jour le plugin :
 | Address | L'adresse d'accès à la box avec le http(s) devant (http://mafreebox.free.fr sur réseau local)  |
 | Port | Le port pour accéder à la Freebox (80 sur réseau local) |
 | Token | Le Token de connexion à la Freebox qui vous sera donné lors de la première connexion du plugin (voir les log) |
+| Liste mac adresse pour présence (séparé par ;) | Une liste d'adresse mac à vérifier sur les équipements enregistrés sur la Freebox comme étant présent à proximité de la box (reachable et active). Présent au domicile |
 | Debug | Si true plus de log apparaitront dans la console de log |
 
 Dans la partie Matériel de Domoticz, chercher 'Freebox Python Plugin'.
@@ -48,6 +49,7 @@ Vous pouvez supprimer ceux qui ne vous interresse pas et inclure ceux qui vous i
 | ----- | ---------- |
 | Système | Températures de la Freebox et du switch interne  |
 | Disque | Pourcentage d'espace utilisé de chaque partition connectées à la Freebox au moment du démarrage du Plugin avec autorisation d'ajout de dispositifs |
+| Présence | Pour chaque adresse mac renseigné, s'il est trouvé enregistré sur la Freebox, un dispositif switch est créé, indiquant la presence (on) ou l'absence (off) du matériel à proximité de la box. Cela permet de tester la presence d'une personne au domicile en vérifiant la presence de sont smartphone par exemple. Cela fonctionne, même avec les Iphones |
 
 Note : Un fichier ```devicemapping.json``` est créé pour garder l'association des infos de la Freebox avec le bon device créé au moment du démarrage du Plugin.
 
@@ -55,4 +57,4 @@ Note : Un fichier ```devicemapping.json``` est créé pour garder l'association 
 
 | Version | Information|
 | ----- | ---------- |
-| 1.0 | Version initial : connexion (token), températures système, espace disque |
+| 1.0 | Version initial : connexion (token), températures système, espace disque, présence |
