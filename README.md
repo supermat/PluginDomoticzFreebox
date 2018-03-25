@@ -6,20 +6,21 @@ Plugin Python Domoticz pour accéder au services de l'API V4 de la Freebox
 * Création du token d'authentification lors du premier lancement (une validation est nécessaire sur l'écran de la Freebox serveur)
 * Création d'un dispositif par partition de disque dur connecté à la Freebox (disques internes et externes)
 * Création de 3 dispositifs pour suivre les températures de la Freebox
+* Création d'un dispositif switch par adresse mac pour laquelle vérifier la présence ou non à proximité de la Freebox.
 
 ## Installation
 
 Requis : Python version 3.4 or supérieur & Domoticz version 3.87xx ou supérieur.
 
-* En ligne de commande aller dans le répertoire plugin de Domotivz (domoticz/plugins)
-* Lancer la commande: ```git clone https://github.com/supermat/XXXX.git```
+* En ligne de commande aller dans le répertoire plugin de Domoticz (domoticz/plugins)
+* Lancer la commande: ```git clone https://github.com/supermat/PluginDomoticzFreebox.git```
 * Redemmarrer le service Domoticz en lancant la commande '''sudo /init.d/domoticz restart'''
 
 ## Updating
 
 Pour mettre à jour le plugin :
 
-* En ligne de commande aller dans le répertoire plugin de Domotivz (domoticz/plugins)
+* En ligne de commande aller dans le répertoire plugin de Domoticz (domoticz/plugins)
 * Lancer la commande: ```git pull```
 * Redemmarrer le service Domoticz en lancant la commande ```sudo /init.d/domoticz restart```
 
@@ -49,7 +50,7 @@ Vous pouvez supprimer ceux qui ne vous interresse pas et inclure ceux qui vous i
 | ----- | ---------- |
 | Système | Températures de la Freebox et du switch interne  |
 | Disque | Pourcentage d'espace utilisé de chaque partition connectées à la Freebox au moment du démarrage du Plugin avec autorisation d'ajout de dispositifs |
-| Présence | Pour chaque adresse mac renseigné, s'il est trouvé enregistré sur la Freebox, un dispositif switch est créé, indiquant la presence (on) ou l'absence (off) du matériel à proximité de la box. Cela permet de tester la presence d'une personne au domicile en vérifiant la presence de sont smartphone par exemple. Cela fonctionne, même avec les Iphones |
+| Présence | Pour chaque adresse mac renseignée, si elle est trouvée enregistrée sur la Freebox, un dispositif switch est créé, indiquant la presence (on) ou l'absence (off) du matériel à proximité de la box. Cela permet de tester la presence d'une personne au domicile en vérifiant la presence de sont smartphone par exemple. Cela fonctionne, même avec les Iphones |
 
 Note : Un fichier ```devicemapping.json``` est créé pour garder l'association des infos de la Freebox avec le bon device créé au moment du démarrage du Plugin.
 
