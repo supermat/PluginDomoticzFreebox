@@ -11,11 +11,11 @@ https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 
 ## Installation
 
-Requis : Python version 3.4 or supérieur & Domoticz version 3.87xx ou supérieur.
+Requis : Python version 3.4 or supérieur & Domoticz version 3.81xx ou supérieur.
 
 * En ligne de commande aller dans le répertoire plugin de Domoticz (domoticz/plugins)
 * Lancer la commande: ```git clone https://github.com/supermat/PluginDomoticzFreebox.git```
-* Redemmarrer le service Domoticz en lancant la commande '''sudo /init.d/domoticz restart'''
+* Redemmarrer le service Domoticz en lancant la commande ```sudo service domoticz.sh restart```
 
 ## Updating
 
@@ -23,7 +23,7 @@ Pour mettre à jour le plugin :
 
 * En ligne de commande aller dans le répertoire plugin de Domoticz (domoticz/plugins)
 * Lancer la commande: ```git pull```
-* Redemmarrer le service Domoticz en lancant la commande ```sudo /init.d/domoticz restart```
+* Redemmarrer le service Domoticz en lancant la commande ```sudo service domoticz.sh restart```
 
 ## Configuration
 
