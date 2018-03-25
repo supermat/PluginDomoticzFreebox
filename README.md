@@ -1,5 +1,6 @@
 # Domoticz Freebox Plugin
 Plugin Python Domoticz pour accéder au services de l'API V4 de la Freebox
+https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 
 ## Fonctionnalités
 
