@@ -64,3 +64,4 @@ Note : Un fichier ```devicemapping.json``` est créé pour garder l'association 
 | Version | Information|
 | ----- | ---------- |
 | 1.0 | Version initial : connexion (token), températures système, espace disque, présence |
+| 1.1 | Ajout des switch WIFI et Reboot. Ajout d'une pause au démarrage du plugin pour corriger certains pb |
