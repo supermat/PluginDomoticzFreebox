@@ -8,6 +8,8 @@ https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 * Création d'un dispositif par partition de disque dur connecté à la Freebox (disques internes et externes)
 * Création de 3 dispositifs pour suivre les températures de la Freebox
 * Création d'un dispositif switch par adresse mac pour laquelle vérifier la présence ou non à proximité de la Freebox.
+* Création d'un dispositif switch de suivi et modification de l'état du wifi (Actif/Inactif)
+* Création d'un dispositif switch de reboot de la Freebox serveur
 
 ## Installation
 
@@ -40,7 +42,7 @@ Laissez les valeur par defaut sur un réseau local, ou configurez votre adresse 
 Ajoutez le Matériel et rendez vous dans les log.
 Lors de la première utilisation, laissez le token vide.
 
-Au démarrage, si le token n'est pas défini, le plugin en demander un à la Freebox, il vous faut alors vous déplacer jusqu'à l'écran de la Freebox pourrépondre oui, puis revenir sur votre Domoticz pour copier coller le token qui s'affiche dans la fenetre de log, dans la partie Token de confirguration du plugin.
+Au démarrage, si le token n'est pas défini, le plugin en demander un à la Freebox, il vous faut alors vous déplacer jusqu'à l'écran de la Freebox pour répondre oui, puis revenir sur votre Domoticz pour copier coller le token qui s'affiche dans la fenetre de log, dans la partie Token de configuration du plugin.
 
 Desactivez le plugin, autoriser l'ajout de nouveau dispositif pendant 5 minutes, puis réacivez le plugin pour le faire redemarrer.
 Les dispositifs vont se créer.
@@ -52,6 +54,8 @@ Vous pouvez supprimer ceux qui ne vous interresse pas et inclure ceux qui vous i
 | Système | Températures de la Freebox et du switch interne  |
 | Disque | Pourcentage d'espace utilisé de chaque partition connectées à la Freebox au moment du démarrage du Plugin avec autorisation d'ajout de dispositifs |
 | Présence | Pour chaque adresse mac renseignée, si elle est trouvée enregistrée sur la Freebox, un dispositif switch est créé, indiquant la presence (on) ou l'absence (off) du matériel à proximité de la box. Cela permet de tester la presence d'une personne au domicile en vérifiant la presence de sont smartphone par exemple. Cela fonctionne, même avec les Iphones |
+| On/Off Wifi | Switch permettant de voir l'état du wifi (actif/Desactivé) et de le modifier  |
+| Reboot | Switch permettant de rebooter la Freebox  |
 
 Note : Un fichier ```devicemapping.json``` est créé pour garder l'association des infos de la Freebox avec le bon device créé au moment du démarrage du Plugin.
 

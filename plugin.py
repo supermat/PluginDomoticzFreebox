@@ -1,9 +1,10 @@
 # Freebox Python Plugin
 #
 # Author: https://matdomotique.wordpress.com/
+# https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 #
 """
-<plugin key="Freebox" name="Freebox Python Plugin" author="supermat" version="1.0.0" wikilink="http://www.domoticz.com/wiki/plugins/plugin.html" externallink="https://matdomotique.wordpress.com/">
+<plugin key="Freebox" name="Freebox Python Plugin" author="supermat" version="1.1.0" wikilink="http://www.domoticz.com/wiki/plugins/plugin.html" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
     <params>
         <param field="Address" label="URL de la Box avec http devant" width="400px" required="true" default="http://mafreebox.free.fr"/>
         <param field="Port" label="Port" width="100px" required="true" default="80"/>
@@ -18,7 +19,7 @@
     </params>
 </plugin>
 """
-import Domoticz,freebox,json,os,datetime
+import Domoticz,freebox,json,os,datetime,time
 # from data import * #Pour le debug local sinon à mettre en commentaire
 from enum import Enum
 
@@ -27,10 +28,8 @@ class FreeboxPlugin:
         deviceTypeDisk = 'DiskDevice'
         deviceSystemInfo = 'SystemInfoDevice'
         devicePresence = 'PresenceDevice'
+        deviceCommande = 'Commande'
     _fileNameDeviceMapping = 'devicemapping.json'
-    # _deviceTypeDisk = 'DiskDevice'
-    # _deviceSystemInfo = 'SystemInfoDevice'
-    # _devicePresence = 'PresenceDevice'
     enabled = False
     token = ""
     freeboxURL = "http://mafreebox.free.fr"
@@ -148,17 +147,36 @@ class FreeboxPlugin:
 
             #Creation des device presence de la Freebox
             listeMacString = Parameters["Mode2"]
-            listeMac = listeMacString.split(";")
-            for macAdresse in listeMac:
-                name = f.getNameByMacAdresse(macAdresse)
-                if (name != None):
-                    keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.devicePresence,macAdresse)
-                    if (keyunit not in Devices):
-                        v_dev = Domoticz.Device(Unit=keyunit, Name="Presence "+name, TypeName="Switch")
-                        v_dev.Create()
-                        Domoticz.Log("Création du dispositif "+"Presence "+name)
-                else:
-                    Domoticz.Log("La mac adresse "+macAdresse+" est inconnu de la freebox, on ne crée aucun dispositif.")
+            if(listeMacString != ""):
+                listeMac = listeMacString.split(";")
+                for macAdresse in listeMac:
+                    name = f.getNameByMacAdresse(macAdresse)
+                    if (name != None):
+                        keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.devicePresence,macAdresse)
+                        if (keyunit not in Devices):
+                            v_dev = Domoticz.Device(Unit=keyunit, Name="Presence "+name, TypeName="Switch")
+                            v_dev.Create()
+                            Domoticz.Log("Création du dispositif "+"Presence "+name)
+                    else:
+                        Domoticz.Log("La mac adresse "+macAdresse+" est inconnu de la freebox, on ne crée aucun dispositif.")
+            
+            #Creation du device d'activation/désactivation du WIFI
+            v_etatWIFI = f.isOnWIFI()
+            Domoticz.Log("Etat WIFI : "+ str(v_etatWIFI))
+            keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceCommande,"WIFI")
+            if (keyunit not in Devices):
+                v_dev = Domoticz.Device(Unit=keyunit, Name="WIFI On/Off", TypeName="Switch")
+                v_dev.Create()
+                Domoticz.Log("Création du dispositif "+"WIFI On/Off")
+            self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
+            #Creation du device de reboot du Freebox server
+            #f.reboot()
+            keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceCommande,"REBOOT")
+            if (keyunit not in Devices):
+                v_dev = Domoticz.Device(Unit=keyunit, Name="Reboot Server", TypeName="Switch")
+                v_dev.Create()
+                Domoticz.Log("Création du dispositif "+"Reboot Server")
+            
             DumpConfigToLog()
 
     def onStop(self):
@@ -172,6 +190,28 @@ class FreeboxPlugin:
 
     def onCommand(self, Unit, Command, Level, Hue):
         Domoticz.Log("onCommand called for Unit " + str(Unit) + ": Parameter '" + str(Command) + "', Level: " + str(Level))
+        # 2018-04-02 20:26:01.192 User: Admin initiated a switch command (17/Freebox - Presence iPhonedMatthieu/On)
+        # 2018-04-02 20:26:01.209 (Freebox) onCommand called for Unit 5: Parameter 'On', Level: 0
+        # 2018-04-02 20:27:50.550 User: Admin initiated a switch command (17/Freebox - Presence iPhonedMatthieu/Off)
+        # 2018-04-02 20:27:50.552 (Freebox) onCommand called for Unit 5: Parameter 'Off', Level: 0
+        # 2018-04-02 20:28:44.350 User: Admin initiated a switch command (18/Freebox - Presence iPhonedTiphaine/On)
+        # 2018-04-02 20:28:44.380 (Freebox) onCommand called for Unit 6: Parameter 'On', Level: 0
+        keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceCommande,"WIFI")
+        if (keyunit == Unit):
+            f=freebox.FbxApp("idPluginDomoticz",self.token,host=self.freeboxURL)
+            if(str(Command) == "On"):
+                f.setOnOFFWifi(1)
+            else:                
+                f.setOnOFFWifi(0)
+        time.sleep(1)
+        #On remet à jour l'état du wifi suite à la modification
+        v_etatWIFI = f.isOnWIFI()
+        self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
+
+        keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceCommande,"REBOOT")
+        if (keyunit == Unit):
+            f=freebox.FbxApp("idPluginDomoticz",self.token,host=self.freeboxURL)
+            f.reboot()
 
     def onNotification(self, Name, Subject, Text, Status, Priority, Sound, ImageFile):
         Domoticz.Log("Notification: " + Name + "," + Subject + "," + Text + "," + Status + "," + str(Priority) + "," + Sound + "," + ImageFile)
@@ -211,11 +251,18 @@ class FreeboxPlugin:
         for periph in lanPeriph:            
             Domoticz.Debug(lanPeriph[periph]+" ("+periph+") présent")
 
+        v_etatWIFI = f.isOnWIFI()
+        self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
+
 global _plugin
 _plugin = FreeboxPlugin()
 
 def onStart():
     global _plugin
+    # on fait une pause de 10 secondes au démarrage pour attendre la Freebox si besoin
+    # correction apporté par Gells qui avait des erreur au démarrage
+    #https://easydomoticz.com/forum/viewtopic.php?f=10&t=6222&p=55468#p55442
+    time.sleep(5)
     _plugin.onStart()
 
 def onStop():
