@@ -65,3 +65,4 @@ Note : Un fichier ```devicemapping.json``` est créé pour garder l'association 
 | ----- | ---------- |
 | 1.0 | Version initial : connexion (token), températures système, espace disque, présence |
 | 1.1 | Ajout des switch WIFI et Reboot. Ajout d'une pause au démarrage du plugin pour corriger certains pb |
+| 1.1.1 | PRise en compte de l'adresse MAC en Majuscule ou minuscule pour la présence |

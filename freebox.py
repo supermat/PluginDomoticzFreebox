@@ -125,7 +125,7 @@ class FbxApp(FbxCnx):
             listePeriph = self.com( "lan/browser/pub/")
             for periph in listePeriph["result"]:
                 macAdresse = periph["id"]
-                if(("ether-"+p_macAdresse) == macAdresse):
+                if(("ETHER-"+p_macAdresse.upper()) == macAdresse.upper()):
                     return periph["primary_name"]
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
@@ -137,7 +137,7 @@ class FbxApp(FbxCnx):
             listePeriph = self.com( "lan/browser/pub/")
             for periph in listePeriph["result"]:
                 macAdresse = periph["id"]
-                if(("ether-"+p_macAdresse) == macAdresse):
+                if(("ETHER-"+p_macAdresse.upper()) == macAdresse.upper()):
                     reachable = periph["reachable"]
                     active = periph["active"]
                     if reachable and active:
