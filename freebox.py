@@ -106,14 +106,16 @@ class FbxApp(FbxCnx):
         retour = {}
         try:
             listDisk = self.com( "storage/disk/")
-            for disk in listDisk["result"]:
-                for partition in disk["partitions"]:
-                    label = partition["label"]
-                    used =partition["used_bytes"]
-                    total=partition["total_bytes"]
-                    percent = used/total*100
-                    # print(str(label)+"=>"+str(round(percent,2))+"%")
-                    retour.update({str(label):str(round(percent,2))})
+            if ("result" in listDisk): #Pour la box mini 4K qui n'a pas de disk
+                for disk in listDisk["result"]:
+                    if ("partitions" in disk): #Pour la box mini 4K qui n'a pas de disk
+                        for partition in disk["partitions"]:
+                            label = partition["label"]
+                            used =partition["used_bytes"]
+                            total=partition["total_bytes"]
+                            percent = used/total*100
+                            # print(str(label)+"=>"+str(round(percent,2))+"%")
+                            retour.update({str(label):str(round(percent,2))})
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
         except timeout:
