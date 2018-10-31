@@ -66,4 +66,4 @@ Note : Un fichier ```devicemapping.json``` est créé pour garder l'association 
 | 1.0 | Version initial : connexion (token), températures système, espace disque, présence |
 | 1.1 | Ajout des switch WIFI et Reboot. Ajout d'une pause au démarrage du plugin pour corriger certains pb |
 | 1.1.1 | Prise en compte de l'adresse MAC en Majuscule ou minuscule pour la présence |
-| 1.1.2 | Prise en compte de la Freebox mini 4K (qui n'a pas de disque interne) en conservant l'usage des disque externes |
+| 1.1.2 | Prise en compte de la Freebox mini 4K (qui n'a pas de disque interne) en conservant l'usage des disques externes |
