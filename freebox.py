@@ -204,7 +204,7 @@ class FbxApp(FbxCnx):
             v_result = self.put( "wifi/config/",data)
             isOn = False
             if True == v_result['success']:
-                if v_result['result']['ap_params']['enabled']:
+                if v_result['result']['enabled']: #v_result['result']['ap_params']['enabled']:
                     Domoticz.Log( "Wifi is now ON")
                     isOn = True
                 else:
