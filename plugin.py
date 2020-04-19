@@ -203,10 +203,10 @@ class FreeboxPlugin:
                 f.setOnOFFWifi(1)
             else:                
                 f.setOnOFFWifi(0)
-        time.sleep(1)
-        #On remet à jour l'état du wifi suite à la modification
-        v_etatWIFI = f.isOnWIFI()
-        self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
+            time.sleep(1)
+            #On remet à jour l'état du wifi suite à la modification
+            v_etatWIFI = f.isOnWIFI()
+            self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
 
         keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceCommande,"REBOOT")
         if (keyunit == Unit):
