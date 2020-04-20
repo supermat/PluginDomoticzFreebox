@@ -119,7 +119,7 @@ class FbxApp(FbxCnx):
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
         except timeout:
-            1 #on ne fait rien, on retourne une liste vide
+            Domoticz.Log('Timeout') #on ne fait rien, on retourne une liste vide
         return retour
     
     def getNameByMacAdresse(self,p_macAdresse):
@@ -147,7 +147,7 @@ class FbxApp(FbxCnx):
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
         except timeout:
-            1 #on ne fait rien, on retourne faux
+            Domoticz.Log('Timeout') #on ne fait rien, on retourne faux
         return False
 
     def lanPeripherique(self):
@@ -164,7 +164,7 @@ class FbxApp(FbxCnx):
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
         except timeout:
-            1 #on ne fait rien, on retourne une liste vide
+            Domoticz.Log('Timeout') #on ne fait rien, on retourne une liste vide
         return retour
 
     def sysinfo(self):
@@ -177,7 +177,7 @@ class FbxApp(FbxCnx):
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
         except timeout:
-            1 #on ne fait rien, on retourne une liste vide
+            Domoticz.Log('Timeout') #on ne fait rien, on retourne une liste vide
         return retour
 
     def isOnWIFI(self):
