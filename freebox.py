@@ -232,7 +232,12 @@ class FbxApp(FbxCnx):
         return isOn
     
     def reboot(self):
-        v_result = self.com( "system/reboot")
+        challenge=self._com("login/")["result"]["challenge"]
+        data={
+          "app_id": self.appid,
+          "password": hmac.new(self.token.encode(),challenge.encode(),hashlib.sha1).hexdigest()
+        }
+        v_result = self.com( "system/reboot",data)
         if not v_result['success']:
             Domoticz.Log("Erreur lors du Reboot")
         Domoticz.Log("Freebox Server en cours de reboot.")
