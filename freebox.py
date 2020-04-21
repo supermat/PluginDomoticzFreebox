@@ -115,7 +115,7 @@ class FbxApp(FbxCnx):
                             total=partition["total_bytes"]
                             Domoticz.Log('Disk '+label+' '+used+'/'+total)
                             percent = 0
-                            if(total>0)
+                            if (total > 0):
                                 percent = used/total*100
                             # print(str(label)+"=>"+str(round(percent,2))+"%")
                             retour.update({str(label):str(round(percent,2))})
