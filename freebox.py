@@ -112,7 +112,6 @@ class FbxApp(FbxCnx):
     def diskinfo(self):
         retour = {}
         try:
-            Domoticz.Debug('Debut diskinfo')
             listDisk = self.com( "storage/disk/")
             if ("result" in listDisk): #Pour la box mini 4K qui n'a pas de disk
                 for disk in listDisk["result"]:
@@ -121,7 +120,7 @@ class FbxApp(FbxCnx):
                             label = partition["label"]
                             used =partition["used_bytes"]
                             total=partition["total_bytes"]
-                            #Domoticz.Debug('Disk '+label+' '+used+'/'+total) #can only concatenate str (not « int ») to str
+                            Domoticz.Debug('Disk '+label+' '+str(used)+'/'+str(total))
                             percent = 0
                             if (total is not None):
                                 if (total > 0):
@@ -129,10 +128,10 @@ class FbxApp(FbxCnx):
                                     # print(str(label)+"=>"+str(round(percent,2))+"%")
                                     retour.update({str(label):str(round(percent,2))})   
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
+            Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
             return retour
         except timeout:
-            Domoticz.Log('Timeout') #on ne fait rien, on retourne une liste vide
+            Domoticz.Error('Timeout') #on ne fait rien, on retourne une liste vide
             return retour
         return retour
     
@@ -144,7 +143,7 @@ class FbxApp(FbxCnx):
                 if(("ETHER-"+p_macAdresse.upper()) == macAdresse.upper()):
                     return periph["primary_name"]
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
+            Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
         except timeout:
             return ""
     
@@ -159,9 +158,9 @@ class FbxApp(FbxCnx):
                     if reachable and active:
                         return True
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
+            Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
         except timeout:
-            Domoticz.Log('Timeout') #on ne fait rien, on retourne faux
+            Domoticz.Error('Timeout') #on ne fait rien, on retourne faux
         return False
 
     def lanPeripherique(self):
@@ -176,9 +175,9 @@ class FbxApp(FbxCnx):
                 if reachable and active:
                     retour.update({macAdresse:name})
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
+            Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
         except timeout:
-            Domoticz.Log('Timeout') #on ne fait rien, on retourne une liste vide
+            Domoticz.Error('Timeout') #on ne fait rien, on retourne une liste vide
         return retour
 
     def sysinfo(self):
@@ -189,9 +188,9 @@ class FbxApp(FbxCnx):
             retour.update({str('temp_sw'):str(round(sys["result"]["temp_sw"],2))})
             retour.update({str('temp_cpum'):str(round(sys["result"]["temp_cpum"],2))})
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
+            Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
         except timeout:
-            Domoticz.Log('Timeout') #on ne fait rien, on retourne une liste vide
+            Domoticz.Error('Timeout') #on ne fait rien, on retourne une liste vide
         return retour
 
     def isOnWIFI(self):
@@ -202,7 +201,7 @@ class FbxApp(FbxCnx):
             else:
                 return 0
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
+            Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
         except timeout:
             return 0
 
@@ -219,17 +218,17 @@ class FbxApp(FbxCnx):
             isOn = False
             if True == v_result['success']:
                 if v_result['result']['enabled']: #v_result['result']['ap_params']['enabled']:
-                    Domoticz.Log( "Wifi is now ON")
+                    Domoticz.Debug( "Wifi is now ON")
                     isOn = True
                 else:
-                    Domoticz.Log("Wifi is now OFF")
+                    Domoticz.Debug("Wifi is now OFF")
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Log('setOnOFFWifi Erreur '+ error.msg)
+            Domoticz.Error('setOnOFFWifi Erreur '+ error.msg)
         except timeout:
             if not p_isPutOn:
                 # If we are connected using wifi, disabling wifi will close connection
                 # thus PUT response will never be received: a timeout is expected
-                Domoticz.Log("Wifi désactivé")
+                Domoticz.Error("Wifi désactivé")
                 return False
             else:
                 # Forward timeout exception as should not occur
@@ -253,5 +252,6 @@ class FbxApp(FbxCnx):
         }
         v_result = self.com( "system/reboot",data)
         if not v_result['success']:
-            Domoticz.Log("Erreur lors du Reboot")
-        Domoticz.Log("Freebox Server en cours de reboot.")
+            Domoticz.Error("Erreur lors du Reboot")
+        else:
+            Domoticz.Debug("Freebox Server en cours de reboot.")

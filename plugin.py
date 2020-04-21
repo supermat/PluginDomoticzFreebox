@@ -126,12 +126,12 @@ class FreeboxPlugin:
 
                 f=freebox.FbxApp("idPluginDomoticz",self.token,host=self.freeboxURL)
 
-                #Creation des device Disque Dur de la Freebox
                 #Pour trouver le pb avec la FreeBox Delta, on affiche le json
-                if Parameters["Mode6"] == "Debug":
-                    jsonUsageDisk = f.diskinfoRaw()
-                    Domoticz.Debug(jsonUsageDisk)
+                #if Parameters["Mode6"] == "Debug":
+                #    jsonUsageDisk = f.diskinfoRaw()
+                #    Domoticz.Debug(jsonUsageDisk)
 
+                #Creation des device Disque Dur de la Freebox
                 usageDisk = f.diskinfo()
                 for disk in usageDisk:
                     keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceTypeDisk,disk)
