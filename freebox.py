@@ -102,9 +102,17 @@ class FbxApp(FbxCnx):
     def get(self,method,data=None):
         return self._get(method,data,{"X-Fbx-App-Auth": self.session})
 
+    def diskinfoRaw(self):
+        listDiskRaw = self.com( "storage/disk/")
+        if (listDiskRaw is not None):
+            return json.dumps(listDiskRaw)
+        else:
+            return "null"
+
     def diskinfo(self):
         retour = {}
         try:
+            Domoticz.Debug('Debut diskinfo')
             listDisk = self.com( "storage/disk/")
             if ("result" in listDisk): #Pour la box mini 4K qui n'a pas de disk
                 for disk in listDisk["result"]:
@@ -113,16 +121,19 @@ class FbxApp(FbxCnx):
                             label = partition["label"]
                             used =partition["used_bytes"]
                             total=partition["total_bytes"]
-                            Domoticz.Log('Disk '+label+' '+used+'/'+total)
+                            Domoticz.Debug('Disk '+label+' '+used+'/'+total)
                             percent = 0
-                            if (total > 0):
-                                percent = used/total*100
-                            # print(str(label)+"=>"+str(round(percent,2))+"%")
-                            retour.update({str(label):str(round(percent,2))})
+                            if (total is not None):
+                                if (total > 0):
+                                    percent = used/total*100
+                                    # print(str(label)+"=>"+str(round(percent,2))+"%")
+                                    retour.update({str(label):str(round(percent,2))})   
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Log('La Freebox semble indisponible : '+ error.msg)
+            return retour
         except timeout:
             Domoticz.Log('Timeout') #on ne fait rien, on retourne une liste vide
+            return retour
         return retour
     
     def getNameByMacAdresse(self,p_macAdresse):

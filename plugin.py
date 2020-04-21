@@ -103,81 +103,89 @@ class FreeboxPlugin:
 
     def onStart(self):
         Domoticz.Debug("onStart called")
-
-        self.freeboxURL = Parameters["Address"]+":"+Parameters["Port"]
-        if Parameters["Mode6"] == "Debug":
-            Domoticz.Debugging(1)
-        DumpConfigToLog()
-        if Parameters["Mode1"] == "": # Le Token
-            Domoticz.Log("C'est votre première connexion, le token n'est pas renseigné.")
-            Domoticz.Log("Vous avez 30 secondes pour autoriser le plugin sur l'écran de la Freebox.")
-            Domoticz.Log("Une fois autorisé sur la Freebox, le token s'affichera ici.")
-            Token = freebox.FbxCnx(self.freeboxURL).register("idPluginDomoticz","Plugin Freebox","1","Domoticz")
-            if Token:
-                Domoticz.Log("------------------------------------------------------------------------------")
-                Domoticz.Log("Veuillez copier ce token dans la configuration du plugin Reglages > Matériel")
-                Domoticz.Log(Token)
-                Domoticz.Log("------------------------------------------------------------------------------")
-            else:
-                 Domoticz.Log("Vous avez été trop long (ou avez refusé), veuillez désactiver et réactiver le matériel Reglages > Matériel.")
-        else:
-            self.token = Parameters["Mode1"]
-            Domoticz.Log("Token déjà présent. OK.")
-
-            f=freebox.FbxApp("idPluginDomoticz",self.token,host=self.freeboxURL)
-            usageDisk = f.diskinfo()
-            #Creation des device Disque Dur de la Freebox
-            for disk in usageDisk:
-                keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceTypeDisk,disk)
-                if (keyunit not in Devices):
-                    v_dev = Domoticz.Device(Unit=keyunit, Name="Utilisation "+disk, TypeName="Percentage")
-                    v_dev.Create()
-                    Domoticz.Log("Création du dispositif "+"Utilisation "+disk)
-                    # Unfortunately the image in the Percentage device can not be changed. Use Custom device!
-                    # Domoticz.Device(Unit=_UNIT_USAGE, Name=Parameters["Address"], TypeName="Custom", Options={"Custom": "1;%"}, Image=3, Used=1).Create()
-            
-            #Creation des device infos systeme de la Freebox
-            sysinfo = f.sysinfo()
-            for info in sysinfo:
-                keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceSystemInfo,info)
-                if (keyunit not in Devices):
-                    v_dev = Domoticz.Device(Unit=keyunit, Name="System "+info, TypeName="Temperature")
-                    v_dev.Create()
-                    Domoticz.Log("Création du dispositif "+"System "+info)
-
-            #Creation des device presence de la Freebox
-            listeMacString = Parameters["Mode2"]
-            if(listeMacString != ""):
-                listeMac = listeMacString.split(";")
-                for macAdresse in listeMac:
-                    name = f.getNameByMacAdresse(macAdresse)
-                    if (name != None):
-                        keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.devicePresence,macAdresse)
-                        if (keyunit not in Devices):
-                            v_dev = Domoticz.Device(Unit=keyunit, Name="Presence "+name, TypeName="Switch")
-                            v_dev.Create()
-                            Domoticz.Log("Création du dispositif "+"Presence "+name)
-                    else:
-                        Domoticz.Log("La mac adresse "+macAdresse+" est inconnu de la freebox, on ne crée aucun dispositif.")
-            
-            #Creation du device d'activation/désactivation du WIFI
-            v_etatWIFI = f.isOnWIFI()
-            Domoticz.Log("Etat WIFI : "+ str(v_etatWIFI))
-            keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceCommande,"WIFI")
-            if (keyunit not in Devices):
-                v_dev = Domoticz.Device(Unit=keyunit, Name="WIFI On/Off", TypeName="Switch")
-                v_dev.Create()
-                Domoticz.Log("Création du dispositif "+"WIFI On/Off")
-            self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
-            #Creation du device de reboot du Freebox server
-            #f.reboot()
-            keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceCommande,"REBOOT")
-            if (keyunit not in Devices):
-                v_dev = Domoticz.Device(Unit=keyunit, Name="Reboot Server", TypeName="Switch")
-                v_dev.Create()
-                Domoticz.Log("Création du dispositif "+"Reboot Server")
-            
+        try:
+            self.freeboxURL = Parameters["Address"]+":"+Parameters["Port"]
+            if Parameters["Mode6"] == "Debug":
+                Domoticz.Debugging(1)
             DumpConfigToLog()
+            if Parameters["Mode1"] == "": # Le Token
+                Domoticz.Log("C'est votre première connexion, le token n'est pas renseigné.")
+                Domoticz.Log("Vous avez 30 secondes pour autoriser le plugin sur l'écran de la Freebox.")
+                Domoticz.Log("Une fois autorisé sur la Freebox, le token s'affichera ici.")
+                Token = freebox.FbxCnx(self.freeboxURL).register("idPluginDomoticz","Plugin Freebox","1","Domoticz")
+                if Token:
+                    Domoticz.Log("------------------------------------------------------------------------------")
+                    Domoticz.Log("Veuillez copier ce token dans la configuration du plugin Reglages > Matériel")
+                    Domoticz.Log(Token)
+                    Domoticz.Log("------------------------------------------------------------------------------")
+                else:
+                    Domoticz.Log("Vous avez été trop long (ou avez refusé), veuillez désactiver et réactiver le matériel Reglages > Matériel.")
+            else:
+                self.token = Parameters["Mode1"]
+                Domoticz.Log("Token déjà présent. OK.")
+
+                f=freebox.FbxApp("idPluginDomoticz",self.token,host=self.freeboxURL)
+
+                #Creation des device Disque Dur de la Freebox
+                #Pour trouver le pb avec la FreeBox Delta, on affiche le json
+                if Parameters["Mode6"] == "Debug":
+                    jsonUsageDisk = f.diskinfoRaw()
+                    Domoticz.Debug(jsonUsageDisk)
+
+                usageDisk = f.diskinfo()
+                for disk in usageDisk:
+                    keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceTypeDisk,disk)
+                    if (keyunit not in Devices):
+                        v_dev = Domoticz.Device(Unit=keyunit, Name="Utilisation "+disk, TypeName="Percentage")
+                        v_dev.Create()
+                        Domoticz.Log("Création du dispositif "+"Utilisation "+disk)
+                        # Unfortunately the image in the Percentage device can not be changed. Use Custom device!
+                        # Domoticz.Device(Unit=_UNIT_USAGE, Name=Parameters["Address"], TypeName="Custom", Options={"Custom": "1;%"}, Image=3, Used=1).Create()
+                
+                #Creation des device infos systeme de la Freebox
+                sysinfo = f.sysinfo()
+                for info in sysinfo:
+                    keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceSystemInfo,info)
+                    if (keyunit not in Devices):
+                        v_dev = Domoticz.Device(Unit=keyunit, Name="System "+info, TypeName="Temperature")
+                        v_dev.Create()
+                        Domoticz.Log("Création du dispositif "+"System "+info)
+
+                #Creation des device presence de la Freebox
+                listeMacString = Parameters["Mode2"]
+                if(listeMacString != ""):
+                    listeMac = listeMacString.split(";")
+                    for macAdresse in listeMac:
+                        name = f.getNameByMacAdresse(macAdresse)
+                        if (name != None):
+                            keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.devicePresence,macAdresse)
+                            if (keyunit not in Devices):
+                                v_dev = Domoticz.Device(Unit=keyunit, Name="Presence "+name, TypeName="Switch")
+                                v_dev.Create()
+                                Domoticz.Log("Création du dispositif "+"Presence "+name)
+                        else:
+                            Domoticz.Log("La mac adresse "+macAdresse+" est inconnu de la freebox, on ne crée aucun dispositif.")
+                
+                #Creation du device d'activation/désactivation du WIFI
+                v_etatWIFI = f.isOnWIFI()
+                Domoticz.Log("Etat WIFI : "+ str(v_etatWIFI))
+                keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceCommande,"WIFI")
+                if (keyunit not in Devices):
+                    v_dev = Domoticz.Device(Unit=keyunit, Name="WIFI On/Off", TypeName="Switch")
+                    v_dev.Create()
+                    Domoticz.Log("Création du dispositif "+"WIFI On/Off")
+                self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
+                #Creation du device de reboot du Freebox server
+                #f.reboot()
+                keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceCommande,"REBOOT")
+                if (keyunit not in Devices):
+                    v_dev = Domoticz.Device(Unit=keyunit, Name="Reboot Server", TypeName="Switch")
+                    v_dev.Create()
+                    Domoticz.Log("Création du dispositif "+"Reboot Server")
+                
+                DumpConfigToLog()
+        except Exception as e:
+            Domoticz.Log("OnStart error: "+str(e))
 
     def onStop(self):
         Domoticz.Log("onStop called")
@@ -221,38 +229,42 @@ class FreeboxPlugin:
 
     def onHeartbeat(self):
         Domoticz.Debug("onHeartbeat called")
-        if self._lastExecution.minute == datetime.datetime.now().minute :
-            return        
-        self._lastExecution = datetime.datetime.now()
-        if self.token == "" :
-            Domoticz.Log("Pas de token défini.")
-            return
-        f=freebox.FbxApp("idPluginDomoticz",self.token,host=self.freeboxURL)
-        
-        usageDisk = f.diskinfo()
-        for disk in usageDisk:
-            self.updateDeviceIfExist(self.DeviceType.deviceTypeDisk,disk,int(float(usageDisk[disk])), str(usageDisk[disk]))
-        
-        sysinfo = f.sysinfo()
-        for info in sysinfo:
-            self.updateDeviceIfExist(self.DeviceType.deviceSystemInfo,info,int(float(sysinfo[info])), str(sysinfo[info]))
-        
-        listeMacString = Parameters["Mode2"]
-        listeMac = listeMacString.split(";")
-        for macAdresse in listeMac:
-            name = f.getNameByMacAdresse(macAdresse)
-            presence = 0
-            if (name != None):
-                if(f.isPresenceByMacAdresse(macAdresse)):
-                    presence = 1
-            self.updateDeviceIfExist(self.DeviceType.devicePresence,macAdresse,presence, str(presence))
-        
-        lanPeriph = f.lanPeripherique()
-        for periph in lanPeriph:            
-            Domoticz.Debug(lanPeriph[periph]+" ("+periph+") présent")
+        try:
+            if self._lastExecution.minute == datetime.datetime.now().minute :
+                return        
+            self._lastExecution = datetime.datetime.now()
+            if self.token == "" :
+                Domoticz.Log("Pas de token défini.")
+                return
+            f=freebox.FbxApp("idPluginDomoticz",self.token,host=self.freeboxURL)
+            
+            usageDisk = f.diskinfo()
+            for disk in usageDisk:
+                self.updateDeviceIfExist(self.DeviceType.deviceTypeDisk,disk,int(float(usageDisk[disk])), str(usageDisk[disk]))
+            
+            sysinfo = f.sysinfo()
+            for info in sysinfo:
+                self.updateDeviceIfExist(self.DeviceType.deviceSystemInfo,info,int(float(sysinfo[info])), str(sysinfo[info]))
+            
+            listeMacString = Parameters["Mode2"]
+            listeMac = listeMacString.split(";")
+            for macAdresse in listeMac:
+                name = f.getNameByMacAdresse(macAdresse)
+                presence = 0
+                if (name != None):
+                    if(f.isPresenceByMacAdresse(macAdresse)):
+                        presence = 1
+                self.updateDeviceIfExist(self.DeviceType.devicePresence,macAdresse,presence, str(presence))
+            
+            lanPeriph = f.lanPeripherique()
+            for periph in lanPeriph:            
+                Domoticz.Debug(lanPeriph[periph]+" ("+periph+") présent")
 
-        v_etatWIFI = f.isOnWIFI()
-        self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
+            v_etatWIFI = f.isOnWIFI()
+            self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
+    
+        except Exception as e:
+            Domoticz.Log("onHeartbeat error: "+str(e))
 
 global _plugin
 _plugin = FreeboxPlugin()
