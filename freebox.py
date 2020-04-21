@@ -121,7 +121,7 @@ class FbxApp(FbxCnx):
                             label = partition["label"]
                             used =partition["used_bytes"]
                             total=partition["total_bytes"]
-                            Domoticz.Debug('Disk '+label+' '+used+'/'+total)
+                            #Domoticz.Debug('Disk '+label+' '+used+'/'+total) #can only concatenate str (not « int ») to str
                             percent = 0
                             if (total is not None):
                                 if (total > 0):
