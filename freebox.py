@@ -113,7 +113,10 @@ class FbxApp(FbxCnx):
                             label = partition["label"]
                             used =partition["used_bytes"]
                             total=partition["total_bytes"]
-                            percent = used/total*100
+                            Domoticz.Log('Disk '+label+' '+used+'/'+total)
+                            percent = 0
+                            if(total>0)
+                                percent = used/total*100
                             # print(str(label)+"=>"+str(round(percent,2))+"%")
                             retour.update({str(label):str(round(percent,2))})
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
