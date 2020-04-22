@@ -245,12 +245,13 @@ class FbxApp(FbxCnx):
         return isOn
     
     def reboot(self):
-        challenge=self._com("login/")["result"]["challenge"]
-        data={
-          "app_id": self.appid,
-          "password": hmac.new(self.token.encode(),challenge.encode(),hashlib.sha1).hexdigest()
-        }
-        v_result = self.com( "system/reboot",data)
+        #challenge=self.com("login/")["result"]["challenge"]
+        #data={
+        #  "app_id": self.appid,
+        #  "password": hmac.new(self.token.encode(),challenge.encode(),hashlib.sha1).hexdigest()
+        #}
+        #v_result = self.com( "system/reboot/",data)
+        v_result = self.com("system/reboot/")
         if not v_result['success']:
             Domoticz.Error("Erreur lors du Reboot")
         else:
