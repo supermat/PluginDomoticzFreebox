@@ -31,7 +31,7 @@ Pour mettre à jour le plugin :
 
 | Field | Information|
 | ----- | ---------- |
-| Address | L'adresse d'accès à la box avec le http(s) devant (http://mafreebox.free.fr sur réseau local)  |
+| Address | L'adresse d'accès à la box avec le http(s) devant (~~http://mafreebox.free.fr~~ sur réseau local, visiblement, depuis la dernière mise à jour de Free Aout 2020, cette adresse ne fonctionne plus, il faudrait utiliser http://mafreebox.freebox.fr ou https://mafreebox.free.fr - Merci Kyrille et alranapa)  |
 | Port | Le port pour accéder à la Freebox (80 sur réseau local) |
 | Token | Le Token de connexion à la Freebox qui vous sera donné lors de la première connexion du plugin (voir les log) |
 | Liste mac adresse pour présence (séparé par ;) | Une liste d'adresse mac à vérifier sur les équipements enregistrés sur la Freebox comme étant présent à proximité de la box (reachable et active). Présent au domicile |
