@@ -41,13 +41,13 @@ class FreeboxPlugin:
 
     def getDicoUnitAllDevice(self):
         v_UnitKeyDico = {}
-        if (os.path.isfile(self._fileNameDeviceMapping)):
-                with open(self._fileNameDeviceMapping) as data_file:
+        if (os.path.isfile(Parameters["HomeFolder"]+self._fileNameDeviceMapping)):
+                with open(Parameters["HomeFolder"]+self._fileNameDeviceMapping) as data_file:
                     v_UnitKeyDico = json.load(data_file)
         return v_UnitKeyDico
 
     def saveDicoUnitDevice(self, p_dicoToSave):
-        with open(self._fileNameDeviceMapping, 'w', encoding='utf-8') as data_file:
+        with open(Parameters["HomeFolder"]+self._fileNameDeviceMapping, 'w', encoding='utf-8') as data_file:
                 json.dump(p_dicoToSave, data_file)
 
     def getNextUnsuedUnit(self,p_dicoAll):
