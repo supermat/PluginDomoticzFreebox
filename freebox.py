@@ -38,7 +38,7 @@ class FbxCnx:
                 request = Request(url,headers=headers)
             else:
                 request = Request(url)
-        res = urlopen(request,timeout=2).read()
+        res = urlopen(request,timeout=4).read()
         return json.loads(res.decode())
 
     def _put(self,method,data=None,headers=None):
@@ -56,7 +56,7 @@ class FbxCnx:
                 request = Request(url,headers=headers)
             else:
                 request = Request(url)
-        res = urlopen(request,timeout=2).read()
+        res = urlopen(request,timeout=4).read()
         return json.loads(res.decode())
 
     def _get(self,method,data=None,headers=None):
@@ -66,7 +66,7 @@ class FbxCnx:
         else:
             request = Request(url)
         request.get_method = lambda:"GET"
-        res = urlopen(request,timeout=2).read()
+        res = urlopen(request,timeout=4).read()
         return json.loads(res.decode())
 
     def _mksession(self):
