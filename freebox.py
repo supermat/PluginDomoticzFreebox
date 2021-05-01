@@ -28,7 +28,7 @@ class FbxCnx:
 
     def _com(self,method,data=None,headers=None):
         url = self.host+"/api/v4/"+method
-        if data: 
+        if data:
             data = json.dumps(data) #On transforme en string le dict
             data = data.encode() #On transforme en tableau de byte le string pour Request
             request = Request(url, data=data)
@@ -43,7 +43,7 @@ class FbxCnx:
 
     def _put(self,method,data=None,headers=None):
         url = self.host+"/api/v4/"+method
-        if data: 
+        if data:
             data = json.dumps(data) #On transforme en string le dict
             data = data.encode() #On transforme en tableau de byte le string pour Request
             if headers:
@@ -126,7 +126,7 @@ class FbxApp(FbxCnx):
                                 if (total > 0):
                                     percent = used/total*100
                                     # print(str(label)+"=>"+str(round(percent,2))+"%")
-                                    retour.update({str(label):str(round(percent,2))})   
+                                    retour.update({str(label):str(round(percent,2))})
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
             return retour
@@ -134,7 +134,7 @@ class FbxApp(FbxCnx):
             Domoticz.Error('Timeout') #on ne fait rien, on retourne une liste vide
             return retour
         return retour
-    
+
     def getNameByMacAdresse(self,p_macAdresse):
         try:
             listePeriph = self.com( "lan/browser/pub/")
@@ -146,7 +146,7 @@ class FbxApp(FbxCnx):
             Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
         except timeout:
             return ""
-    
+
     def isPresenceByMacAdresse(self,p_macAdresse):
         try:
             listePeriph = self.com( "lan/browser/pub/")
@@ -193,6 +193,18 @@ class FbxApp(FbxCnx):
             Domoticz.Error('Timeout') #on ne fait rien, on retourne une liste vide
         return retour
 
+    def connectioninfo(self):
+        retour = {}
+        try:
+            connection = self.com( "connection/")
+            retour.update({str('rate_down'):str(connection["result"]["rate_down"]/1000)})
+            retour.update({str('rate_up'):str(connection["result"]["rate_up"]/1000)})
+        except (urllib.error.HTTPError, urllib.error.URLError) as error:
+            Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
+        except timeout:
+            Domoticz.Error('Timeout') #on ne fait rien, on retourne une liste vide
+        return retour
+
     def isOnWIFI(self):
         try:
             v_result = self.get("wifi/config/")
@@ -209,7 +221,7 @@ class FbxApp(FbxCnx):
         isOn = None
         if p_isPutOn:
             # data = {'ap_params': {'enabled': True}}
-            data = {'enabled': True}          
+            data = {'enabled': True}
         else:
             # data = {'ap_params': {'enabled': False}}
             data = {'enabled': False}
@@ -238,12 +250,12 @@ class FbxApp(FbxCnx):
         # if requests.codes.ok != r.status_code:
         #     raise FbxOSException("Put error: %s" % r.text)
         # rc is 200 but did we really succeed?
-        
+
         # else:
         #     raise FbxOSException("Challenge failure: %s" % resp)
         # self._logout()
         return isOn
-    
+
     def reboot(self):
         #challenge=self.com("login/")["result"]["challenge"]
         #data={
