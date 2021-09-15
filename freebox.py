@@ -184,9 +184,15 @@ class FbxApp(FbxCnx):
         retour = {}
         try:
             sys = self.com( "system/")
-            retour.update({str('temp_cpub'):str(round(sys["result"]["temp_cpub"],2))})
-            retour.update({str('temp_sw'):str(round(sys["result"]["temp_sw"],2))})
-            retour.update({str('temp_cpum'):str(round(sys["result"]["temp_cpum"],2))})
+            if sys["result"]['board_name'] == 'fbxgw8r':
+                Domoticz.Log("Freebox POP")
+                retour.update({str('temp_cpub'):str(round(sys["result"]["temp_cpub"],2))})
+                retour.update({str('temp_t1'):str(round(sys["result"]["temp_t1"],2))})
+                retour.update({str('temp_t2'):str(round(sys["result"]["temp_t2"],2))})
+            else:
+                retour.update({str('temp_cpub'):str(round(sys["result"]["temp_cpub"],2))})
+                retour.update({str('temp_sw'):str(round(sys["result"]["temp_sw"],2))})
+                retour.update({str('temp_cpum'):str(round(sys["result"]["temp_cpum"],2))})
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
         except timeout:
