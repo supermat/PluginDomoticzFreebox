@@ -199,6 +199,21 @@ class FbxApp(FbxCnx):
             Domoticz.Error('Timeout') #on ne fait rien, on retourne une liste vide
         return retour
 
+    def constatus(self):
+        try:
+            v_result = self.get("connection/")
+            if v_result["result"]['state'] == 'up':
+                Domoticz.Log("Connection is UP")
+                return 1
+            else:
+                Domoticz.Log("Connection is DOWN")
+                return 0
+        except (urllib.error.HTTPError, urllib.error.URLError) as error:
+            Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
+        except timeout:
+            Domoticz.Error('Timeout') #on ne fait rien, on retourne une liste vide
+        return 0
+
     def isOnWIFI(self):
         try:
             v_result = self.get("wifi/config/")
