@@ -16,7 +16,7 @@ https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 Requis : Python version 3.4 or supérieur & Domoticz version 3.81xx ou supérieur.
 
 * En ligne de commande aller dans le répertoire plugin de Domoticz (domoticz/plugins)
-* Lancer la commande: ```git clone https://github.com/supermat/PluginDomoticzFreebox.git```
+* Lancer la commande: ```git clone https://github.com/nachonam/PluginDomoticzFreebox.git```
 * Redemmarrer le service Domoticz en lancant la commande ```sudo service domoticz.sh restart```
 
 ## Updating
@@ -69,3 +69,5 @@ Note : Un fichier ```devicemapping.json``` est créé pour garder l'association 
 | 1.1 | Ajout des switch WIFI et Reboot. Ajout d'une pause au démarrage du plugin pour corriger certains pb |
 | 1.1.1 | Prise en compte de l'adresse MAC en Majuscule ou minuscule pour la présence |
 | 1.1.2 | Prise en compte de la Freebox mini 4K (qui n'a pas de disque interne) en conservant l'usage des disques externes |
+| 1.2.0 | Ajout de l'alarme FreeBox Delta |^M
+

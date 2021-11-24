@@ -134,7 +134,83 @@ class FbxApp(FbxCnx):
             Domoticz.Error('Timeout') #on ne fait rien, on retourne une liste vide
             return retour
         return retour
-    
+ 
+    def alarminfo(self):
+            retour = {}
+            try:
+                listNodes= self.com( "home/tileset/all")  #listNodes 
+                if ("result" in listNodes): #
+                    for node in listNodes["result"]:
+                        device = {}
+                        label=''
+                        if node["type"]=="alarm_control" :
+                            device.update({"type":str(node["type"])})  
+                            for data in node["data"]:
+                                if  (data["ep_id"]== 11)  and  node["type"]=="alarm_control" :
+                                        label = data["label"]
+                                        if data['value']=='alarm1_armed' :
+                                                value=1
+                                                device.update({"alarm1_status":str(value)}) 
+                                        elif data['value']=='alarm1_arming' :
+                                                value=-1
+                                                device.update({"alarm1_status":str(value)})  
+                                        else:
+                                                value=0
+                                                device.update({"alarm1_status":str(value)})  
+                                        if data['value']=='alarm2_armed':
+                                                value=1
+                                                device.update({"alarm2_status":str(value)}) 
+                                        elif data['value']=='alarm2_arming' :
+                                                value=-1
+                                                device.update({"alarm2_status":str(value)})  
+                                        else:
+                                                value=0
+                                                device.update({"alarm2_status":str(value)})  
+                                        device.update({"label":str(label)}) 
+                                elif  (data["ep_id"]== 13)  and  node["type"]=="alarm_control" :       #error
+                                        status_error= data ["value"]
+                                        device.update({"status_error":str(status_error)}) 
+                                elif  (data["name"]== 'battery_warning') :
+                                        battery= data ["value"]
+                                        device.update({"battery":str(battery)}) 
+                                device1=device.copy()    
+                                device2=device.copy()    
+                                if 'alarm1_status' in device1: 
+                                    device1['value']=device1['alarm1_status']
+                                    device1['label']=device1['label']+'1'
+                                if 'alarm2_status' in device2:  
+                                    device2['value']=device2['alarm2_status']
+                                    device2['label']=device2['label']+'2'
+                                retour.update({device1['label']:device1}) 
+                                retour.update({device2['label']:device2}) 
+
+                listNodes= self.com( "home/nodes")
+                if ("result" in listNodes): #
+                    for node in listNodes["result"]:
+                        device = {}
+                        label=''
+                        if  ( (node["category"] == "pir")  or (node["category"] == "dws")  ) : 
+                            label = node["label"]
+                            device.update({"label":str(label)}) 
+                            device.update({"type":str(node["category"] )})
+                            for ep in node["show_endpoints"]:
+                                if (  ep["name"] == 'battery'):
+                                    battery= ep ["value"]
+                                    device.update({"battery":str(battery)}) 
+                                elif ( ep["name"] == 'trigger'):
+                                            if (ep["value"]): 
+                                                device.update({"value":0})
+                                            elif (not ep["value"]): 
+                                                device.update({"value":1})
+                                retour.update({label:device}) 
+            except (urllib.error.HTTPError, urllib.error.URLError) as error:
+                #Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
+                return retour
+            except timeout:
+                #Domoticz.Error('Timeout') #on ne fait rien, on retourne une liste vide
+                return retour
+            return retour
+ 
     def getNameByMacAdresse(self,p_macAdresse):
         try:
             listePeriph = self.com( "lan/browser/pub/")
