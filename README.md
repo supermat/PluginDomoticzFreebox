@@ -57,7 +57,9 @@ Vous pouvez supprimer ceux qui ne vous interresse pas et inclure ceux qui vous i
 | On/Off Wifi | Switch permettant de voir l'état du wifi (actif/Desactivé) et de le modifier  |
 | Reboot | Switch permettant de rebooter la Freebox  |
 
-ATTENTION : Pour faire fonctionner le On/Off Wifi et le reboot, il faut autoriser le plugin a faire ces deux actions sur la Freebox. Lors de la génération du token, le plugin a été autorisé à récupérer les infos, mais pas à les modifier. Il faut pour cela aller dans l'interface Freebox OS via le menu Paramètres de la Freebox > Gestion des accès > onglet Applications, sélectionner le plugin Domoticz et cocher Modifications des réglages de la Freebox".
+ATTENTION : Pour faire fonctionner le On/Off Wifi et le reboot, il faut autoriser le plugin a faire ces deux actions sur la Freebox. Lors de la génération du token, le plugin a été autorisé à récupérer les infos, mais pas à les modifier. Il faut pour cela aller dans l'interface Freebox OS via le menu Paramètres de la Freebox > Gestion des accès > onglet Applications, sélectionner le plugin Domoticz et cocher "Modifications des réglages de la Freebox".
+
+ATTENTION: Pour pouvoir récuperer les infos de l'alrme, il faut aller dans l'interface Freebox OS via le menu Paramètres de la Freebox > Gestion des accès > onglet Applications, sélectionner le plugin Domoticz et cocher "Gestion de l'alarme et maison connectée".
 
 Note : Un fichier ```devicemapping.json``` est créé pour garder l'association des infos de la Freebox avec le bon device créé au moment du démarrage du Plugin.
 
