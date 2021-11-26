@@ -6,7 +6,7 @@
 """
 <plugin key="Freebox" name="Freebox Python Plugin" author="nachonam <-> supermat" version="1.2.0" wikilink="http://www.domoticz.com/wiki/plugins/plugin.html" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
     <params>
-        <param field="Address" label="URL de la Box avec http devant" width="400px" required="true" default="http://mafreebox.free.fr"/>
+        <param field="Address" label="URL de la Box avec http devant" width="400px" required="true" default="http://mafreebox.freebox.fr"/>
         <param field="Port" label="Port" width="100px" required="true" default="80"/>
         <param field="Mode1" label="Token" width="600px"/>
         <param field="Mode2" label="Liste mac adresse pour présence (séparé par ;)" width="600px"/>
