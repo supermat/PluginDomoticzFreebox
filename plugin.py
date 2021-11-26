@@ -209,7 +209,7 @@ class FreeboxPlugin:
                 Domoticz.Heartbeat(1)
                 DumpConfigToLog()
         except Exception as e:
-            Domoticz.Log("OnStart error: "+str(e))
+            Domoticz.Error("OnStart error: "+str(e))
 
     def onStop(self):
         Domoticz.Log("onStop called")
@@ -293,7 +293,7 @@ class FreeboxPlugin:
             self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
     
         except Exception as e:
-            Domoticz.Log("onHeartbeat error: "+str(e))
+            Domoticz.Error("onHeartbeat error: "+str(e))
 
 global _plugin
 _plugin = FreeboxPlugin()

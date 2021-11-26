@@ -76,23 +76,31 @@ class FbxCnx:
           "password": hmac.new(self.token.encode(),challenge.encode(),hashlib.sha1).hexdigest()
         }
         return self._com("login/session/",data)["result"]["session_token"]
-
-    # def _disconnect(self):
-    #     # result = self._com("/login/logout",None,{'Content-Type': 'application/json','X-Fbx-App-Auth': self.session})
-    #     result = self._com("/login/logout")
-    #     print (result)
-    #     # return
-
+    
+    def _disconnect(self, method, headers=None):
+        url = self.host+"/api/v4/"+method
+        request = Request(url,headers=headers)
+        request.get_method = lambda:"POST"
+        res = urlopen(request,timeout=4).read()
+        return json.loads(res.decode())
+    
 class FbxApp(FbxCnx):
     def __init__(self,appid,token,session=None,host="mafreebox.free.fr"):
         FbxCnx.__init__(self,host)
         self.appid,self.token=appid,token
         self.session=session if session else self._mksession()
 
-    # def __del__(self):
-    #     self._disconnect()
-    #     print ('died')
+    def __del__(self):
+        try:
+            self.disconnect( "login/logout")
+        except (urllib.error.HTTPError, urllib.error.URLError) as error:
+            Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
+        except timeout:
+            Domoticz.Error('Timeout') #on ne fait rien
 
+    def disconnect(self, method):
+        return self._disconnect( method,{"X-Fbx-App-Auth": self.session})        
+    
     def com(self,method,data=None):
         return self._com(method,data,{"X-Fbx-App-Auth": self.session})
 
