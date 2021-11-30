@@ -16,7 +16,7 @@ https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 Requis : Python version 3.4 or supérieur & Domoticz version 3.81xx ou supérieur.
 
 * En ligne de commande aller dans le répertoire plugin de Domoticz (domoticz/plugins)
-* Lancer la commande: ```git clone https://github.com/supermat/PluginDomoticzFreebox.git```
+* Lancer la commande: ```git clone https://github.com/nachonam/PluginDomoticzFreebox.git```
 * Redemmarrer le service Domoticz en lancant la commande ```sudo service domoticz.sh restart```
 
 ## Updating
@@ -57,7 +57,9 @@ Vous pouvez supprimer ceux qui ne vous interresse pas et inclure ceux qui vous i
 | On/Off Wifi | Switch permettant de voir l'état du wifi (actif/Desactivé) et de le modifier  |
 | Reboot | Switch permettant de rebooter la Freebox  |
 
-ATTENTION : Pour faire fonctionner le On/Off Wifi et le reboot, il faut autoriser le plugin a faire ces deux actions sur la Freebox. Lors de la génération du token, le plugin a été autorisé à récupérer les infos, mais pas à les modifier. Il faut pour cela aller dans l'interface Freebox OS via le menu Paramètres de la Freebox > Gestion des accès > onglet Applications, sélectionner le plugin Domoticz et cocher Modifications des réglages de la Freebox".
+ATTENTION : Pour faire fonctionner le On/Off Wifi et le reboot, il faut autoriser le plugin a faire ces deux actions sur la Freebox. Lors de la génération du token, le plugin a été autorisé à récupérer les infos, mais pas à les modifier. Il faut pour cela aller dans l'interface Freebox OS via le menu Paramètres de la Freebox > Gestion des accès > onglet Applications, sélectionner le plugin Domoticz et cocher "Modifications des réglages de la Freebox".
+
+ATTENTION: Pour pouvoir récuperer les infos de l'alrme, il faut aller dans l'interface Freebox OS via le menu Paramètres de la Freebox > Gestion des accès > onglet Applications, sélectionner le plugin Domoticz et cocher "Gestion de l'alarme et maison connectée".
 
 Note : Un fichier ```devicemapping.json``` est créé pour garder l'association des infos de la Freebox avec le bon device créé au moment du démarrage du Plugin.
 
@@ -69,3 +71,5 @@ Note : Un fichier ```devicemapping.json``` est créé pour garder l'association 
 | 1.1 | Ajout des switch WIFI et Reboot. Ajout d'une pause au démarrage du plugin pour corriger certains pb |
 | 1.1.1 | Prise en compte de l'adresse MAC en Majuscule ou minuscule pour la présence |
 | 1.1.2 | Prise en compte de la Freebox mini 4K (qui n'a pas de disque interne) en conservant l'usage des disques externes |
+| 1.2.0 | Ajout de l'alarme FreeBox Delta |^M
+

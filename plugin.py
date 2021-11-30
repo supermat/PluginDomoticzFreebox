@@ -4,9 +4,9 @@
 # https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 #
 """
-<plugin key="Freebox" name="Freebox Python Plugin" author="supermat" version="1.1.2" wikilink="http://www.domoticz.com/wiki/plugins/plugin.html" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
+<plugin key="Freebox" name="Freebox Python Plugin" author="nachonam <-> supermat" version="1.2.0" wikilink="http://www.domoticz.com/wiki/plugins/plugin.html" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
     <params>
-        <param field="Address" label="URL de la Box avec http devant" width="400px" required="true" default="http://mafreebox.free.fr"/>
+        <param field="Address" label="URL de la Box avec http devant" width="400px" required="true" default="http://mafreebox.freebox.fr"/>
         <param field="Port" label="Port" width="100px" required="true" default="80"/>
         <param field="Mode1" label="Token" width="600px"/>
         <param field="Mode2" label="Liste mac adresse pour présence (séparé par ;)" width="600px"/>
@@ -29,6 +29,7 @@ class FreeboxPlugin:
         deviceSystemInfo = 'SystemInfoDevice'
         devicePresence = 'PresenceDevice'
         deviceCommande = 'Commande'
+        deviceAlarm='AlarmDevice'
     _fileNameDeviceMapping = 'devicemapping.json'
     enabled = False
     token = ""
@@ -83,12 +84,16 @@ class FreeboxPlugin:
         else:
             return False
 
-    def updateDeviceIfExist(self,  p_deviceType, p_deviceFreeboxName, p_nValue, p_sValue):
+    def updateDeviceIfExist(self,  p_deviceType, p_deviceFreeboxName, p_nValue, p_sValue,p_nBatteryLevel=None):
         if self.isUnitExist(p_deviceType,p_deviceFreeboxName):
             v_unitKey = self.getOrCreateUnitIdForDevice(p_deviceType,p_deviceFreeboxName)
             if v_unitKey in Devices:
+                if ( (p_deviceType.value == self.DeviceType.deviceAlarm.value)   and ( (Devices[v_unitKey].sValue != p_sValue) or  (Devices[v_unitKey].BatteryLevel != p_nBatteryLevel) )  ):
+                        Domoticz.Debug("Le dipositif de type0 "+p_deviceType.value +" associé à "+ p_deviceFreeboxName + " a été mis à jour " + str(p_nValue) + "/" + str(p_sValue)+"/"+str(Devices[v_unitKey].BatteryLevel ) +"/"+ str(p_nBatteryLevel))
+                        Devices[v_unitKey].Update(nValue=p_nValue, sValue=p_sValue, BatteryLevel=p_nBatteryLevel)
+                        Domoticz.Debug("Le dipositif de type "+p_deviceType.value +" associé à "+ p_deviceFreeboxName + " a été mis à jour " + str(p_nValue) + "/" + str(p_sValue))
                 # On ne met pas à jour un device de type devicePresence s'il est déjà à jour
-                if(p_deviceType.value != self.DeviceType.devicePresence.value
+                elif ( (p_deviceType.value != self.DeviceType.devicePresence.value and p_deviceType.value != self.DeviceType.deviceAlarm.value)
                    or (p_deviceType.value == self.DeviceType.devicePresence.value
                         and Devices[v_unitKey].sValue != p_sValue)
                 ):
@@ -150,7 +155,25 @@ class FreeboxPlugin:
                         v_dev = Domoticz.Device(Unit=keyunit, Name="System "+info, TypeName="Temperature")
                         v_dev.Create()
                         Domoticz.Log("Création du dispositif "+"System "+info)
-
+                        
+                #Creation des devices  l'alarme Freebox
+                alarminfo = f.alarminfo()
+                for alarm_device in alarminfo:
+                        Domoticz.Debug("Label "+alarminfo[alarm_device]["label"])
+                        keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceAlarm,alarminfo[alarm_device]["label"])
+                        if (keyunit not in Devices):
+                            if (alarminfo[alarm_device]["type"]) == 'alarm_control':
+                                v_dev = Domoticz.Device(Unit=keyunit, Name=alarminfo[alarm_device]["label"], TypeName="Switch", Switchtype=0)
+                                v_dev.Create()
+                            elif  (alarminfo[alarm_device]["type"]) == 'dws':
+                                v_dev = Domoticz.Device(Unit=keyunit, Name=alarminfo[alarm_device]["label"], TypeName="Switch", Switchtype=0)
+                                v_dev.Create()
+                                Domoticz.Log("Création du dispositif "+"Alarm "+alarminfo[alarm_device]["label"])
+                            elif (alarminfo[alarm_device]["type"]) == 'pir':
+                                v_dev = Domoticz.Device(Unit=keyunit, Name=alarminfo[alarm_device]["label"], TypeName="Switch", Switchtype=8)
+                                v_dev.Create()
+                                Domoticz.Log("Création du dispositif "+"Alarm "+alarminfo[alarm_device]["label"])
+                                
                 #Creation des device presence de la Freebox
                 listeMacString = Parameters["Mode2"]
                 if(listeMacString != ""):
@@ -183,9 +206,10 @@ class FreeboxPlugin:
                     v_dev.Create()
                     Domoticz.Log("Création du dispositif "+"Reboot Server")
                 
+                Domoticz.Heartbeat(1)
                 DumpConfigToLog()
         except Exception as e:
-            Domoticz.Log("OnStart error: "+str(e))
+            Domoticz.Error("OnStart error: "+str(e))
 
     def onStop(self):
         Domoticz.Log("onStop called")
@@ -230,13 +254,18 @@ class FreeboxPlugin:
     def onHeartbeat(self):
         Domoticz.Debug("onHeartbeat called")
         try:
-            if self._lastExecution.minute == datetime.datetime.now().minute :
-                return        
-            self._lastExecution = datetime.datetime.now()
             if self.token == "" :
                 Domoticz.Log("Pas de token défini.")
                 return
             f=freebox.FbxApp("idPluginDomoticz",self.token,host=self.freeboxURL)
+            #Alarme de la Freebox
+            alarminfo = f.alarminfo()
+            for alarm_device in alarminfo:
+                    self.updateDeviceIfExist(self.DeviceType.deviceAlarm,  alarminfo[alarm_device]["label"],int(alarminfo[alarm_device]["value"]), str(alarminfo[alarm_device]["value"]),int(alarminfo[alarm_device]["battery"]))
+
+            if self._lastExecution.minute == datetime.datetime.now().minute :
+                return        
+            self._lastExecution = datetime.datetime.now()
             
             usageDisk = f.diskinfo()
             for disk in usageDisk:
@@ -264,7 +293,7 @@ class FreeboxPlugin:
             self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
     
         except Exception as e:
-            Domoticz.Log("onHeartbeat error: "+str(e))
+            Domoticz.Error("onHeartbeat error: "+str(e))
 
 global _plugin
 _plugin = FreeboxPlugin()
@@ -274,7 +303,7 @@ def onStart():
     # on fait une pause de 10 secondes au démarrage pour attendre la Freebox si besoin
     # correction apporté par Gells qui avait des erreur au démarrage
     #https://easydomoticz.com/forum/viewtopic.php?f=10&t=6222&p=55468#p55442
-    time.sleep(5)
+    time.sleep(1)
     _plugin.onStart()
 
 def onStop():
