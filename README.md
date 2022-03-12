@@ -10,6 +10,8 @@ https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 * Création d'un dispositif switch par adresse mac pour laquelle vérifier la présence ou non à proximité de la Freebox.
 * Création d'un dispositif switch de suivi et modification de l'état du wifi (Actif/Inactif)
 * Création d'un dispositif switch de reboot de la Freebox serveur
+* Création d'un dispositif switch d'état de la connection Internet (WAN)
+* Création de deux dispositifs pour les debits montants et descendants en Ko/s
 
 ## Installation
 
@@ -56,6 +58,8 @@ Vous pouvez supprimer ceux qui ne vous interresse pas et inclure ceux qui vous i
 | Présence | Pour chaque adresse mac renseignée, si elle est trouvée enregistrée sur la Freebox, un dispositif switch est créé, indiquant la presence (on) ou l'absence (off) du matériel à proximité de la box. Cela permet de tester la presence d'une personne au domicile en vérifiant la presence de sont smartphone par exemple. Cela fonctionne, même avec les Iphones |
 | On/Off Wifi | Switch permettant de voir l'état du wifi (actif/Desactivé) et de le modifier  |
 | Reboot | Switch permettant de rebooter la Freebox  |
+| WANStatus | Etat de la connection Internet |
+| Debits | Debits montants et descendants en Ko/s |
 
 ATTENTION : Pour faire fonctionner le On/Off Wifi et le reboot, il faut autoriser le plugin a faire ces deux actions sur la Freebox. Lors de la génération du token, le plugin a été autorisé à récupérer les infos, mais pas à les modifier. Il faut pour cela aller dans l'interface Freebox OS via le menu Paramètres de la Freebox > Gestion des accès > onglet Applications, sélectionner le plugin Domoticz et cocher Modifications des réglages de la Freebox".
 
@@ -69,3 +73,4 @@ Note : Un fichier ```devicemapping.json``` est créé pour garder l'association 
 | 1.1 | Ajout des switch WIFI et Reboot. Ajout d'une pause au démarrage du plugin pour corriger certains pb |
 | 1.1.1 | Prise en compte de l'adresse MAC en Majuscule ou minuscule pour la présence |
 | 1.1.2 | Prise en compte de la Freebox mini 4K (qui n'a pas de disque interne) en conservant l'usage des disques externes |
+| 1.1.3 | Prise en compte de la Freebox POP pour les températures et Ajout des détails de connection debits montants et descendant en Ko/s |
