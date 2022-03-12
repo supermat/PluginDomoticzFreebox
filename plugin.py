@@ -161,7 +161,7 @@ class FreeboxPlugin:
                         v_dev = Domoticz.Device(Unit=keyunit, Name="System "+info, TypeName="Temperature")
                         v_dev.Create()
                         Domoticz.Log("Création du dispositif "+"System "+info)
-
+                
                 #Creation des device presence de la Freebox
                 listeMacString = Parameters["Mode2"]
                 if(listeMacString != ""):
@@ -193,6 +193,16 @@ class FreeboxPlugin:
                     v_dev = Domoticz.Device(Unit=keyunit, Name="Reboot Server", TypeName="Switch")
                     v_dev.Create()
                     Domoticz.Log("Création du dispositif "+"Reboot Server")
+                
+                #Test de connection WAN (Internet)
+                constatus = f.constatus()
+                Domoticz.Log("Etat connexion : "+ str(constatus))
+                keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceCommande,"WANStatus")
+                if (keyunit not in Devices):
+                    v_dev = Domoticz.Device(Unit=keyunit, Name="WAN Status", TypeName="Switch")
+                    v_dev.Create()
+                    Domoticz.Log("Création du dispositif "+"WAN Status")
+                self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WANStatus",constatus, str(constatus))
 
                 DumpConfigToLog()
         except Exception as e:
@@ -277,6 +287,9 @@ class FreeboxPlugin:
 
             v_etatWIFI = f.isOnWIFI()
             self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WIFI",v_etatWIFI, str(v_etatWIFI))
+
+            constatus = f.constatus()
+            self.updateDeviceIfExist(self.DeviceType.deviceCommande,"WANStatus",constatus, str(constatus))
 
         except Exception as e:
             Domoticz.Log("onHeartbeat error: "+str(e))
