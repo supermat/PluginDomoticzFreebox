@@ -149,7 +149,7 @@ class FreeboxPlugin:
                 for connection in connectionDetail:
                     keyunit = self.getOrCreateUnitIdForDevice(self.DeviceType.deviceConnectionInfo,connection)
                     if (keyunit not in Devices):
-                        v_dev = Domoticz.Device(Unit=keyunit, Name="Débit "+connection, TypeName="Custom", Options={"Custom": "1;Hz"}, Used=1)
+                        v_dev = Domoticz.Device(Unit=keyunit, Name="Débit "+connection, TypeName="Custom", Options={"Custom": "1;Kb"}, Used=1)
                         v_dev.Create()
                         Domoticz.Log("Création du dispositif "+"Débit "+connection)
 
