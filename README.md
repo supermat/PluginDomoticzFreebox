@@ -1,6 +1,9 @@
 # Domoticz Freebox Plugin
+(v1.1.3 forked from https://github.com/supermat/PluginDomoticzFreebox)
 Plugin Python Domoticz pour accéder au services de l'API V4 de la Freebox
 https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
+
+**Suite à l'arrêt du développement par supermat, le code a été repris pour continuer à faire vivre le projet**
 
 ## Fonctionnalités
 
@@ -18,7 +21,7 @@ https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 Requis : Python version 3.4 or supérieur & Domoticz version 3.81xx ou supérieur.
 
 * En ligne de commande aller dans le répertoire plugin de Domoticz (domoticz/plugins)
-* Lancer la commande: ```git clone https://github.com/supermat/PluginDomoticzFreebox.git```
+* Lancer la commande: ```git clone https://github.com/ilionel/PluginDomoticzFreebox.git```
 * Redemmarrer le service Domoticz en lancant la commande ```sudo service domoticz.sh restart```
 
 ## Updating
@@ -74,3 +77,4 @@ Note : Un fichier ```devicemapping.json``` est créé pour garder l'association 
 | 1.1.1 | Prise en compte de l'adresse MAC en Majuscule ou minuscule pour la présence |
 | 1.1.2 | Prise en compte de la Freebox mini 4K (qui n'a pas de disque interne) en conservant l'usage des disques externes |
 | 1.1.3 | Prise en compte de la Freebox POP pour les températures (slallemand) et Ajout des détails de connection debits montants et descendant en Ko/s (chupi33 et les tests des ViaudJV) |
+| 1.2.0 | Reprise et refonte du code pour un meilleur respect des standards de programmations Python |
