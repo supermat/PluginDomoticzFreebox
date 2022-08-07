@@ -78,3 +78,4 @@ Note : Un fichier ```devicemapping.json``` est créé pour garder l'association 
 | 1.1.2 | Prise en compte de la Freebox mini 4K (qui n'a pas de disque interne) en conservant l'usage des disques externes |
 | 1.1.3 | Prise en compte de la Freebox POP pour les températures (slallemand) et Ajout des détails de connection debits montants et descendant en Ko/s (chupi33 et les tests des ViaudJV) |
 | 1.2.0 | Reprise et refonte du code pour un meilleur respect des standards de programmations Python |
+| 1.2.1 | Ajout de l'alarme FreeBox Delta (adaptation du developpement de nachonam) |
