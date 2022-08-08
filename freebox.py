@@ -13,7 +13,9 @@ freebox.py is used by plugin.py
 import hashlib
 import hmac
 import json
+import os
 import re
+import ssl
 import time
 import urllib.request
 from urllib.request import urlopen, Request
@@ -25,6 +27,7 @@ HOST = 'mafreebox.freebox.fr'   # FQDN of freebox
 API_VER = '4'                   # API version
 REGISTER_TMOUT = 30             # Timout in sec (for Obtain an app_token)
 API_TMOUT = 4                   # Timout in sec (for API response)
+CA_FILE = 'freebox_certificates.pem'
 
 
 class FbxCnx:
@@ -36,9 +39,12 @@ class FbxCnx:
         self.host = host
         self.api_ver = int(float(api))
         self.info = None
+        self.secure = ssl.create_default_context()
+        cert_path = os.path.join(os.path.dirname(__file__), CA_FILE)
         request = Request(host + '/api_version')
         try:
-            response = urlopen(request, timeout=API_TMOUT).read()
+            self.secure.load_verify_locations(cafile=cert_path)
+            response = urlopen(request, timeout=API_TMOUT, context=self.secure).read()
             self.info = json.loads(response.decode())
             Domoticz.Debug('Supported API version: ' + f"{self.info['api_version']}")
             Domoticz.Debug('Freebox model: ' + f"{self.info['box_model']}")
@@ -75,7 +81,7 @@ class FbxCnx:
         request = Request(url=url, data=data, method=method)
         if headers is not None:
             request.headers.update(headers)
-        api_response = urlopen(request, timeout=API_TMOUT).read()
+        api_response = urlopen(request, timeout=API_TMOUT, context=self.secure).read()
         Domoticz.Debug('<- API Response: ' + f"{api_response}")
         dict_response = json.loads(api_response.decode())
         return dict_response

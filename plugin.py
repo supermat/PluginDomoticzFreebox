@@ -1,13 +1,13 @@
 # Freebox Python Plugin
 #
-# Author: https://matdomotique.wordpress.com/ & ilionel : https://github.com/ilionel/PluginDomoticzFreebox/
-# https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
+# Author: supermat & ilionel : https://github.com/ilionel/PluginDomoticzFreebox/
+# Credit: https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 #
 """
-<plugin key="Freebox" name="Freebox Python Plugin" author="supermat & ilionel" version="1.2" wikilink="https://www.domoticz.com/wiki/Plugins" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
+<plugin key="Freebox" name="Freebox Python Plugin" author="supermat & ilionel" version="1.4" wikilink="https://www.domoticz.com/wiki/Plugins" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
     <params>
-        <param field="Address" label="URL de la Box avec http devant" width="400px" required="true" default="http://mafreebox.freebox.fr"/>
-        <param field="Port" label="Port" width="100px" required="true" default="80"/>
+        <param field="Address" label="Freebox URL (avec http[s]://)" width="400px" required="true" default="https://mafreebox.freebox.fr"/>
+        <param field="Port" label="Port" width="100px" required="true" default="443"/>
         <param field="Mode1" label="Token" width="600px"/>
         <param field="Mode2" label="Liste mac adresse pour présence (séparé par ;)" width="600px"/>
         <param field="Mode6" label="Debug" width="75px">
@@ -25,14 +25,14 @@ import json
 import os
 import datetime
 import time
+#import ssl
 # from data import * # Only enable when debug mode
 from enum import Enum
-# from ssl import Options
 import Domoticz
 
-SCHEME = 'http://'
+SCHEME = 'https://'
 HOST = 'mafreebox.freebox.fr'
-PORT = '80'
+PORT = '443'
 JSON_FILE = 'devicemapping.json'
 
 
@@ -192,7 +192,11 @@ class FreeboxPlugin:
         """
         Domoticz.Debug("onStart called")
         try:
-            self.freebox_url = Parameters["Address"] + ":" + Parameters["Port"]
+            if Parameters["Address"] != "":
+                self.freebox_url = Parameters["Address"]
+                if Parameters["Port"] != "":
+                    self.freebox_url = self.freebox_url + ":" + Parameters["Port"]
+            # If Debug checked
             if Parameters["Mode6"] == "Debug":
                 Domoticz.Debugging(1)
             DumpConfigToLog()
@@ -274,8 +278,8 @@ class FreeboxPlugin:
                 alarminfo = f.alarminfo()
                 for alarm_device in alarminfo:
                     Domoticz.Debug("Label "+alarminfo[alarm_device]["label"])
-                    keyunit = self.getOrCreateUnitIdForDevice(
-                        self.DeviceType.deviceAlarm, alarminfo[alarm_device]["label"])
+                    keyunit = self.return_unit_id(
+                        self.Device.ALARM, alarminfo[alarm_device]["label"])
                     if (keyunit not in Devices):
                         if (alarminfo[alarm_device]["type"]) == 'alarm_control':
                             v_dev = Domoticz.Device(
@@ -457,7 +461,7 @@ class FreeboxPlugin:
            # Alarm on Frebox Delta
             alarminfo = f.alarminfo()
             for alarm_device in alarminfo:
-                self.updateDeviceIfExist(self.DeviceType.deviceAlarm,
+                self.updateDeviceIfExist(self.Device.ALARM,
                                          alarminfo[alarm_device]["label"],
                                          int(alarminfo[alarm_device]["value"]),
                                          str(alarminfo[alarm_device]["value"]),
