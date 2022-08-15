@@ -4,16 +4,41 @@
 # Credit: https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 #
 """
-<plugin key="Freebox" name="Freebox Python Plugin" author="supermat & ilionel" version="1.4" wikilink="https://www.domoticz.com/wiki/Plugins" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
+<plugin key="Freebox" name="Freebox (via API)" author="supermat &amp; ilionel" version="2.1.2" wikilink="https://www.domoticz.com/wiki/Plugins" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
+    <description>
+        <br/>
+        <h2>Initialisation</h2><br/>
+        <h3>Au premier démarrage :</h3><br/>
+        <pre>   1.  Laisser le champ "token" vide</pre>
+        <pre>   2.  Accepter la demande directement depuis l'écran de la Freebox (vous aurez 30 secondes)</pre>
+        <pre>   3a. Copier la clé "Token" affichée dans les logs de Domoticz ("Menu Configuration" &gt; "Log" )</pre>
+        <pre>   3b. Coller la clé dans le champ "Token" de la configuration ci-dessous</pre>
+        <pre>   4.  Enregistrer les modifications puis redémarrer le serveur Domoticz</pre>
+        <pre>   5.  Ajouter les nouveaux dispositifs depuis le menu adéquat de Domoticz</pre><br/>
+        <br/><b>Remarque : Les codes de télécommandes sont visibles depuis le Player TV : "Menu Système" &gt; "Informations" &gt; "Player"</b><br/><br/>
+    </description>
     <params>
-        <param field="Address" label="Freebox URL (avec http[s]://)" width="400px" required="true" default="https://mafreebox.freebox.fr"/>
-        <param field="Port" label="Port" width="100px" required="true" default="443"/>
+        <param field="Address" label="Freebox URL (avec http[s]://)" width="600px" required="true" default="https://mafreebox.freebox.fr"/>
+        <param field="Port" label="Port" width="50px" required="true" default="443"/>
         <param field="Mode1" label="Token" width="600px"/>
-        <param field="Mode2" label="Liste mac adresse pour présence (séparé par ;)" width="600px"/>
-        <param field="Mode6" label="Debug" width="75px">
+        <param field="Mode2" label="Liste d'adresses mac (séparateur ;)" width="600px"/>
+        <param field="Mode3" label="Remote TV1" width="200px"/>
+        <param field="Mode4" label="Remote TV2" width="200px"/>
+        <param field="Mode5" label="Fréquence de rafraîchissement" width="200px">
+            <options>
+                <option label="10s" value="10"/>
+                <option label="30s" value="30"/>
+                <option label="60s (default)" value="60" default="true"/>
+                <option label="90s" value="90"/>
+                <option label="120s (2 minutes)" value="120"/>
+                <option label="300s (5 minutes)" value="300"/>
+                <option label="600s (10 minutes)" value="600"/>
+            </options>
+        </param>
+        <param field="Mode6" label="Debug" width="200px">
             <options>
                 <option label="True" value="Debug"/>
-                <option label="False" value="Normal"  default="true" />
+                <option label="False" value="Normal" default="true"/>
             </options>
         </param>
     </params>
@@ -25,7 +50,7 @@ import json
 import os
 import datetime
 import time
-#import ssl
+import traceback
 # from data import * # Only enable when debug mode
 from enum import Enum
 import Domoticz
@@ -35,6 +60,11 @@ HOST = 'mafreebox.freebox.fr'
 PORT = '443'
 JSON_FILE = 'devicemapping.json'
 
+POWER_STATE = ("OFF", "ON")
+LINK_STATE  = ("DOWN", "UP")
+PRESENCE_STATE = ("en ligne", "hors ligne")
+RATE_TYPE = {"rate_down": "download", "rate_up": "upload"}
+SWITCH_CMD = {"Off": 0, "On": 1}
 
 class FreeboxPlugin:
     """
@@ -46,15 +76,20 @@ class FreeboxPlugin:
         """
         DISK = 'Disk'
         CONNECTION_RATE = 'ConnectionRate'
-        SYSTEM_INFO = 'SystemInfo'
+        SYSTEM_SENSOR = 'SystemTemp'
         PRESENCE = 'Presence'
         COMMAND = 'Commande'
         ALARM = 'Alarme'
+        PLAYER = 'TVPlayer'
 
     enabled = False
     token = ""
     freebox_url = SCHEME + HOST + ":" + PORT
-    _lastExecution = datetime.datetime.now()
+    remote_code_tv1 = ""
+    remote_code_tv2 = ""
+    
+    _refresh_interval = 60
+    _tick = 0
 
     def __init__(self):
         return
@@ -117,10 +152,10 @@ class FreeboxPlugin:
         if name in dict_types:
             return dict_types[name]
         else:
-            position = self.get_first_unused_unit_id(dict_devices)
-            dict_types.update({name: position})
+            uid = self.get_first_unused_unit_id(dict_devices)
+            dict_types.update({name: uid})
             self.save_all_devices_dict(dict_devices)
-            return position
+            return uid
 
     def unit_exist(self, device, name):
         """
@@ -164,7 +199,7 @@ class FreeboxPlugin:
                                    "/"+str(Devices[unit_id].BatteryLevel) + "/" + str(battery_level))
                     Devices[unit_id].Update(
                         nValue=n_value, sValue=s_value, BatteryLevel=battery_level)
-                    Domoticz.Debug("Le dipositif de type "+ device.value + " associé à " +
+                    Domoticz.Debug("Le dipositif de type " + device.value + " associé à " +
                                    name + " a été mis à jour " + str(n_value) + "/" + str(s_value))
                 # Test if PRESENCE are already up-to-date
                 elif device.value != self.Device.PRESENCE.value \
@@ -186,175 +221,346 @@ class FreeboxPlugin:
             Domoticz.Debug("Le dipositif de type " + device.value + " associé à " + name +
                            " n'a pas été créé dans Domoticz. Veuillez désactiver et réactiver le plugin, en autorisant l'ajout de nouveaux dispositifs.")
 
+    def init(self):
+        """
+        Initialize the connection with Freebox server.
+
+        Returns:
+            bool: True is success else False
+        """
+        url   = Parameters["Address"]
+        port  = Parameters["Port"]
+        token = Parameters["Mode1"] # Parameters["Mode1"] == Token field
+        debug = Parameters["Mode6"] # Parameters["Mode6"] == Debug field [Debug|Normal]
+        self.remote_code_tv1 = Parameters["Mode3"] # Parameters["Mode3"] == TV Player 1 remote code field
+        self.remote_code_tv2 = Parameters["Mode4"] # Parameters["Mode4"] == TV Player 2 remote code field
+        self._refresh_interval = int(float(Parameters["Mode5"])) # Parameters["Mode5"] == Refresh interval field
+
+        if url != "":
+            if port != "":
+                url = url + ":" + port
+            self.freebox_url = url
+        else:
+            self.freebox_url = SCHEME + HOST + ":" + PORT
+
+        # If Debug checked
+        if debug == "Debug":
+            Domoticz.Debugging(1)
+        DumpConfigToLog()
+
+        # If Token field is empty
+        if token == "":
+            Domoticz.Log(
+                "C'est votre première connexion, le token n'est pas renseigné.")
+            Domoticz.Log(
+                "Vous devez autoriser le plugin sur l'écran de la Freebox.")
+            Domoticz.Log(
+                "Une fois autorisé sur la Freebox, le token s'affichera ici.")
+            token = freebox.FbxCnx(self.freebox_url).register(
+                "idPluginDomoticz", "Plugin Freebox", "1", "Domoticz")
+            # We got a Token thanks to freebox.FbxCnx
+            if token:
+                Domoticz.Log(
+                    "------------------------------------------------------------------------------")
+                Domoticz.Log(
+                    "Veuillez copier ce token dans la configuration du plugin Reglages > Matériel")
+                Domoticz.Log(token)
+                Domoticz.Log(
+                    "------------------------------------------------------------------------------")
+            else:
+                Domoticz.Log(
+                    "Vous avez été trop long (ou avez refusé), veuillez désactiver et réactiver le matériel Reglages > Matériel.")
+        else:
+            self.token = token
+            Domoticz.Log("Token déjà présent. OK.")
+        return True if self.token else False
+
+    def _create_devices_reboot(self):
+        # Create Reboot server switch
+        unit_id = self.return_unit_id(
+            self.Device.COMMAND, "REBOOT")
+        if unit_id not in Devices:
+            device = Domoticz.Device(
+                Unit=unit_id,
+                Name="Reboot Server",
+                TypeName="Switch"
+                )
+            device.Create()
+            Domoticz.Log(f"Nouveau dispositif: '{self.Device.COMMAND.value}' -> 'REBOOT'")
+
+    def _create_devices_storages(self, f):
+        # Creation of disk devices
+        disks = f.ls_storage()
+        for disk, value in disks.items():
+            unit_id = self.return_unit_id(self.Device.DISK, disk)
+            if unit_id not in Devices:
+                device = Domoticz.Device(
+                    Unit=unit_id,
+                    Name="Occupation " + disk,
+                    TypeName="Percentage")
+                device.Create()
+                Domoticz.Log(f"Nouveau dispositif: '{self.Device.DISK.value}' -> '{disk}'")
+                # Unfortunately the image in the Percentage device can not be changed. Use Custom device!
+                # Domoticz.Device(Unit=_UNIT_USAGE, Name=Parameters["Address"], TypeName="Custom", Options={"Custom": "1;%"}, Image=3, Used=1).Create()
+            Domoticz.Log(f"L'espace disque de '{disk}' est occupé à {value}%")
+            self.update_device(self.Device.DISK, disk, int(float(value)), str(value))
+
+    def _create_devices_rates(self, f):
+        # Connection rates of WAN Freebox interface
+        connection_rates = f.connection_rate()
+        for rate, value in connection_rates.items():
+            unit_id = self.return_unit_id(self.Device.CONNECTION_RATE, rate)
+            if unit_id not in Devices:
+                device = Domoticz.Device(
+                    Unit=unit_id,
+                    Name="Débit " + RATE_TYPE[rate],
+                    TypeName="Custom",
+                    Options={"Custom": "1;ko/s"},
+                    Used=1
+                )
+                device.Create()
+                Domoticz.Log(
+                    f"Nouveau dispositif: '{self.Device.CONNECTION_RATE.value}' -> '{RATE_TYPE[rate]}'"
+                    )
+            Domoticz.Log(f"Le débit WAN en '{RATE_TYPE[rate]}' est de {value} ko/s")
+            self.update_device(self.Device.CONNECTION_RATE, rate, int(float(value)), str(value))
+
+    def _create_devices_sensors(self, f):
+        # Create °C temp devices
+        sensors = f.system.sensors()
+        for sensor in sensors:
+            uid = str(sensor['id'])
+            name = sensor['name']
+            value = int(sensor['value'])
+            unit_id = self.return_unit_id(self.Device.SYSTEM_SENSOR, uid)
+            if unit_id not in Devices:
+                device = Domoticz.Device(
+                    Unit=unit_id,
+                    Name=name,
+                    TypeName="Temperature"
+                    )
+                device.Create()
+                Domoticz.Log(f"Nouveau dispositif: '{self.Device.SYSTEM_SENSOR.value}' -> '{name}'")
+            Domoticz.Log(f"La sonde '{name}' affiche {value}°C")
+            self.update_device(self.Device.SYSTEM_SENSOR, uid, value, str(value))
+
+    def _create_devices_alarm(self, f):
+        # Create alarms devices
+        alarminfo = f.alarminfo()
+        for alarm_device in alarminfo:
+            Domoticz.Debug("Label " + alarminfo[alarm_device]['label'])
+            keyunit = self.return_unit_id(
+                self.Device.ALARM, alarminfo[alarm_device]['label'])
+            if (keyunit not in Devices):
+                if (alarminfo[alarm_device]['type']) == 'alarm_control':
+                    device = Domoticz.Device(
+                        Unit=keyunit, Name=alarminfo[alarm_device]['label'], TypeName="Switch", Switchtype=0)
+                    device.Create()
+                    Domoticz.Log(f"Nouveau dispositif: '{self.Device.ALARM.value}' -> '{alarminfo[alarm_device]['label']}'")
+                elif (alarminfo[alarm_device]['type']) == 'dws':
+                    device = Domoticz.Device(
+                        Unit=keyunit, Name=alarminfo[alarm_device]['label'], TypeName="Switch", Switchtype=0)
+                    device.Create()
+                    Domoticz.Log(f"Nouveau dispositif: '{self.Device.ALARM.value}' -> '{alarminfo[alarm_device]['label']}'")
+                elif (alarminfo[alarm_device]["type"]) == 'pir':
+                    device = Domoticz.Device(
+                        Unit=keyunit, Name=alarminfo[alarm_device]["label"], TypeName="Switch", Switchtype=8)
+                    device.Create()
+                    Domoticz.Log(f"Nouveau dispositif: '{self.Device.ALARM.value}' -> '{alarminfo[alarm_device]['label']}'")
+
+    def _create_devices_presence(self, f):
+        # Create presence sensor
+        str_ls_macaddr = Parameters["Mode2"]
+        if str_ls_macaddr != "":
+            ls_macaddr = str_ls_macaddr.split(";")
+            for macaddress in ls_macaddr:
+                name = f.get_name_from_macaddress(macaddress)
+                if name is None:
+                    Domoticz.Log(
+                        f"L'adresse mac: '{macaddress}' est inconnue de la Freebox et sera ignorée"
+                        )
+                else:
+                    unit_id = self.return_unit_id(self.Device.PRESENCE, macaddress)
+                    if unit_id not in Devices:
+                        device = Domoticz.Device(
+                            Unit=unit_id,
+                            Name="Presence " + name,
+                            TypeName="Switch")
+                        device.Create()
+                        Domoticz.Log(
+                            f"Nouveau dispositif: '{self.Device.PRESENCE.value}' -> '{name}'"
+                            )
+                    presence = 1 if f.reachable_macaddress(macaddress) else 0
+                    Domoticz.Log(
+                        f"L'équipement '{name}' est actuellement {PRESENCE_STATE[presence]}"
+                        )
+                    self.update_device(self.Device.PRESENCE, macaddress, presence, str(presence))
+
+    def _create_devices_wifi(self, f):
+        # Create ON/OFF WIFI switch
+        wifi_state = 1 if f.wifi_state() else 0
+        unit_id = self.return_unit_id(
+            self.Device.COMMAND, "WIFI")
+        if unit_id not in Devices:
+            device = Domoticz.Device(
+                Unit=unit_id,
+                Name="WIFI On/Off",
+                TypeName="Switch"
+                )
+            device.Create()
+            Domoticz.Log(f"Nouveau dispositif: '{self.Device.COMMAND.value}' -> 'WIFI'")
+        Domoticz.Log("Le WIFI est " + LINK_STATE[wifi_state])
+        self.update_device(self.Device.COMMAND, "WIFI", wifi_state, str(wifi_state))
+
+    def _create_devices_wan(self, f):
+        # Create WAN status item
+        wan_state = 1 if f.wan_state() else 0
+        unit_id = self.return_unit_id(
+            self.Device.COMMAND, "WANStatus")
+        if unit_id not in Devices:
+            device = Domoticz.Device(
+                Unit=unit_id,
+                Name="WAN Status",
+                TypeName="Switch"
+                )
+            device.Create()
+            Domoticz.Log(f"Nouveau dispositif: '{self.Device.COMMAND.value}' -> 'WANStatus'")
+        Domoticz.Log("La connexion Internet est " + LINK_STATE[wan_state])
+        self.update_device(self.Device.COMMAND, "WANStatus", wan_state, str(wan_state))
+
+    def _create_devices_players(self, f):
+        # Create FreeboxPlayer
+        players = f.players.info
+        for player in players:
+            uid = str(player['id'])
+            player_state = 1 if f.players.state(uid) else 0
+            name = player['device_name'] + ' ' + uid
+            unit_name = player['device_model'] + '_' + uid
+            unit_id = self.return_unit_id(
+                        self.Device.PLAYER, unit_name)
+            if unit_id not in Devices:
+                device = Domoticz.Device(
+                    Unit=unit_id,
+                    Name=name,
+                    TypeName="Switch"
+                    )
+                device.Create()
+                Domoticz.Log(f"Nouveau dispositif: '{self.Device.PLAYER.value}' -> '{name}'")
+            Domoticz.Log(f"Le player TV{uid} est " + POWER_STATE[player_state])
+            self.update_device(self.Device.PLAYER, unit_name, player_state, str(player_state))
+
+    def _refresh_devices_storages(self, f):
+        # Update Disk metics
+        disks = f.ls_storage()
+        for disk, value in disks.items():
+            Domoticz.Debug(f"L'espace disque de '{disk}' est occupé à {value}%")
+            self.update_device(self.Device.DISK, disk, int(float(value)), str(value))
+
+    def _refresh_devices_rates(self, f):
+        # Update WAN UP/DL Rates
+        connection_rates = f.connection_rate()
+        for rate, value in connection_rates.items():
+            Domoticz.Debug(f"Le débit WAN en '{RATE_TYPE[rate]}' est de {value} ko/s")
+            self.update_device(self.Device.CONNECTION_RATE, rate, int(float(value)), str(value))
+
+    def _refresh_devices_sensors(self, f):
+        # Update °C temp devices
+        sensors = f.system.sensors()
+        for sensor in sensors:
+            uid = str(sensor['id'])
+            value = int(sensor['value'])
+            Domoticz.Debug(f"La sonde '{sensor['name']}' affiche {value}°C")
+            self.update_device(self.Device.SYSTEM_SENSOR, uid, value, str(value))
+
+    def _refresh_devices_alarm(self, f):
+        # Update Alarm informations (Only in option with the Frebox Delta)
+        alarminfo = f.alarminfo()
+        for alarm_device in alarminfo:
+            self.update_device(
+                self.Device.ALARM,
+                alarminfo[alarm_device]["label"],
+                int(alarminfo[alarm_device]["value"]),
+                str(alarminfo[alarm_device]["value"]),
+                int(alarminfo[alarm_device]["battery"])
+                )
+
+    def _refresh_devices_presence(self, f):
+        # Update "Presence" Domoticz values
+        str_ls_macaddr = Parameters["Mode2"]
+        ls_macaddr = str_ls_macaddr.split(";")
+        for macaddress in ls_macaddr:
+            name = f.get_name_from_macaddress(macaddress)
+            if name is not None:
+                presence = 1 if f.reachable_macaddress(macaddress) else 0
+                Domoticz.Debug(
+                        f"L'équipement '{name}' est actuellement {PRESENCE_STATE[presence]}"
+                        )
+                self.update_device(self.Device.PRESENCE, macaddress, presence, str(presence))
+
+    def _refresh_devices_wifi(self, f):
+        # Update "Wifi" Domoticz switch state
+        wifi_state = 1 if f.wifi_state() else 0
+        Domoticz.Debug("Le WIFI est " + LINK_STATE[wifi_state])
+        self.update_device(self.Device.COMMAND, "WIFI", wifi_state, str(wifi_state))
+
+    def _refresh_devices_wan(self, f):
+        # Update "WAN interface" Domoticz switch state
+        wan_state = 1 if f.wan_state() else 0
+        Domoticz.Log("La connexion Internet est " + LINK_STATE[wan_state])
+        self.update_device(self.Device.COMMAND, "WANStatus", wan_state, str(wan_state))
+
+    def _refresh_devices_players(self, f):
+        # Update "Players" Domoticz values
+        players = f.players.info
+        for player in players:
+            uid = str(player['id'])
+            player_state = 1 if f.players.state(uid) else 0
+            unit_name = player['device_model'] + '_' + uid
+            Domoticz.Debug(f"Le player TV{uid} est " + POWER_STATE[player_state])
+            self.update_device(self.Device.PLAYER, unit_name, player_state, str(player_state))
+
+    def _switch_reboot(self, f):
+        f.reboot()
+
+    def _switch_wifi(self, f, command):
+        f.wifi_enable(SWITCH_CMD[command])
+        time.sleep(1)
+        # Update Wifi state
+        self._refresh_devices_wifi(f)
+
+    def _switch_player(self, f, command, player_id="1"):
+        Domoticz.Log(f"Switch 'TV Player{player_id}'")
+        if player_id=="1":
+            remote_code = self.remote_code_tv1
+        elif player_id=="2":
+            remote_code = self.remote_code_tv2
+        if remote_code is not None and command=="Off" :
+            f.players.shutdown(player_id, remote_code)
+            time.sleep(1)
+            # Update Player state
+            self._refresh_devices_players(f)
+
     def onStart(self):
         """
         Called when the hardware is started, either after Domoticz start, hardware creation or update.
         """
-        Domoticz.Debug("onStart called")
+        Domoticz.Log("onStart called")
         try:
-            if Parameters["Address"] != "":
-                self.freebox_url = Parameters["Address"]
-                if Parameters["Port"] != "":
-                    self.freebox_url = self.freebox_url + ":" + Parameters["Port"]
-            # If Debug checked
-            if Parameters["Mode6"] == "Debug":
-                Domoticz.Debugging(1)
+            self.init()
+            f = freebox.FbxApp("idPluginDomoticz", self.token, self.freebox_url)
+            self._create_devices_reboot()
+            self._create_devices_storages(f)
+            self._create_devices_rates(f)
+            self._create_devices_sensors(f)
+            self._create_devices_alarm(f)
+            self._create_devices_presence(f)
+            self._create_devices_wifi(f)
+            self._create_devices_wan(f)
+            self._create_devices_players(f)
             DumpConfigToLog()
-            if Parameters["Mode1"] == "":  # Parameters["Mode1"] == Token
-                Domoticz.Log(
-                    "C'est votre première connexion, le token n'est pas renseigné.")
-                Domoticz.Log(
-                    "Vous devez autoriser le plugin sur l'écran de la Freebox.")
-                Domoticz.Log(
-                    "Une fois autorisé sur la Freebox, le token s'affichera ici.")
-                token = freebox.FbxCnx(self.freebox_url).register(
-                    "idPluginDomoticz", "Plugin Freebox", "1", "Domoticz")
-                if token:
-                    Domoticz.Log(
-                        "------------------------------------------------------------------------------")
-                    Domoticz.Log(
-                        "Veuillez copier ce token dans la configuration du plugin Reglages > Matériel")
-                    Domoticz.Log(token)
-                    Domoticz.Log(
-                        "------------------------------------------------------------------------------")
-                else:
-                    Domoticz.Log(
-                        "Vous avez été trop long (ou avez refusé), veuillez désactiver et réactiver le matériel Reglages > Matériel.")
-            else:
-                # Parameters["Mode1"] == Token
-                self.token = Parameters["Mode1"]
-                Domoticz.Log("Token déjà présent. OK.")
-
-                f = freebox.FbxApp("idPluginDomoticz",
-                                   self.token, host=self.freebox_url)
-
-                # Creation of disk devices
-                disks = f.ls_storage()
-                for disk in disks:
-                    unit_id = self.return_unit_id(
-                        self.Device.DISK, disk)
-                    if unit_id not in Devices:
-                        device = Domoticz.Device(
-                            Unit=unit_id, Name="Utilisation " + disk, TypeName="Percentage")
-                        device.Create()
-                        Domoticz.Log("Création du dispositif " +
-                                     "Utilisation " + disk)
-                        # Unfortunately the image in the Percentage device can not be changed. Use Custom device!
-                        # Domoticz.Device(Unit=_UNIT_USAGE, Name=Parameters["Address"], TypeName="Custom", Options={"Custom": "1;%"}, Image=3, Used=1).Create()
-
-                # Connection rates of WAN Freebox interface
-                connection_rates = f.connection_rate()
-                for rate in connection_rates:
-                    unit_id = self.return_unit_id(
-                        self.Device.CONNECTION_RATE, rate)
-                    if unit_id not in Devices:
-                        device = Domoticz.Device(
-                            Unit=unit_id,
-                            Name="Débit " + rate,
-                            TypeName="Custom",
-                            Options={"Custom": "1;Ko"},
-                            Used=1
-                        )
-                        device.Create()
-                        Domoticz.Log("Création du dispositif " +
-                                     "Débit " + rate)
-
-                # Create °C temp devices
-                sysinfo = f.sysinfo()
-                for info in sysinfo:
-                    unit_id = self.return_unit_id(
-                        self.Device.SYSTEM_INFO, info)
-                    if unit_id not in Devices:
-                        device = Domoticz.Device(
-                            Unit=unit_id,
-                            Name="System " + info,
-                            TypeName="Temperature"
-                        )
-                        device.Create()
-                        Domoticz.Log("Création du dispositif " +
-                                     "System " + info)
-
-                # Create alarms devices
-                alarminfo = f.alarminfo()
-                for alarm_device in alarminfo:
-                    Domoticz.Debug("Label "+alarminfo[alarm_device]["label"])
-                    keyunit = self.return_unit_id(
-                        self.Device.ALARM, alarminfo[alarm_device]["label"])
-                    if (keyunit not in Devices):
-                        if (alarminfo[alarm_device]["type"]) == 'alarm_control':
-                            v_dev = Domoticz.Device(
-                                Unit=keyunit, Name=alarminfo[alarm_device]["label"], TypeName="Switch", Switchtype=0)
-                            v_dev.Create()
-                        elif (alarminfo[alarm_device]["type"]) == 'dws':
-                            v_dev = Domoticz.Device(
-                                Unit=keyunit, Name=alarminfo[alarm_device]["label"], TypeName="Switch", Switchtype=0)
-                            v_dev.Create()
-                            Domoticz.Log("Création du dispositif " +
-                                         "Alarm "+alarminfo[alarm_device]["label"])
-                        elif (alarminfo[alarm_device]["type"]) == 'pir':
-                            v_dev = Domoticz.Device(
-                                Unit=keyunit, Name=alarminfo[alarm_device]["label"], TypeName="Switch", Switchtype=8)
-                            v_dev.Create()
-                            Domoticz.Log("Création du dispositif " +
-                                         "Alarm "+alarminfo[alarm_device]["label"])
-
-                # Create presence sensor
-                str_ls_macaddr = Parameters["Mode2"]
-                if str_ls_macaddr != "":
-                    ls_macaddr = str_ls_macaddr.split(";")
-                    for macaddress in ls_macaddr:
-                        name = f.get_name_from_macaddress(macaddress)
-                        if name is not None:
-                            unit_id = self.return_unit_id(
-                                self.Device.PRESENCE, macaddress)
-                            if unit_id not in Devices:
-                                device = Domoticz.Device(
-                                    Unit=unit_id, Name="Presence " + name, TypeName="Switch")
-                                device.Create()
-                                Domoticz.Log(
-                                    "Création du dispositif " + "Presence " + name)
-                        else:
-                            Domoticz.Log(
-                                "La mac adresse " + macaddress + " est inconnu de la freebox, on ne crée aucun dispositif.")
-
-                # Create ON/OFF WIFI switch
-                wifi_state = 1 if f.wifi_state() else 0
-                Domoticz.Log("Etat WIFI : " + str(wifi_state))
-                unit_id = self.return_unit_id(
-                    self.Device.COMMAND, "WIFI")
-                if unit_id not in Devices:
-                    device = Domoticz.Device(
-                        Unit=unit_id, Name="WIFI On/Off", TypeName="Switch")
-                    device.Create()
-                    Domoticz.Log("Création du dispositif " + "WIFI On/Off")
-                self.update_device(
-                    self.Device.COMMAND, "WIFI", wifi_state, str(wifi_state))
-
-                # Create Reboot server switch
-                unit_id = self.return_unit_id(
-                    self.Device.COMMAND, "REBOOT")
-                if unit_id not in Devices:
-                    device = Domoticz.Device(
-                        Unit=unit_id, Name="Reboot Server", TypeName="Switch")
-                    device.Create()
-                    Domoticz.Log("Création du dispositif " + "Reboot Server")
-
-                # Create WAN status item
-                constatus = 1 if f.connection_state() else 0
-                Domoticz.Log("Etat connexion : " + str(constatus))
-                unit_id = self.return_unit_id(
-                    self.Device.COMMAND, "WANStatus")
-                if unit_id not in Devices:
-                    device = Domoticz.Device(
-                        Unit=unit_id, Name="WAN Status", TypeName="Switch")
-                    device.Create()
-                    Domoticz.Log("Création du dispositif " + "WAN Status")
-                self.update_device(
-                    self.Device.COMMAND, "WANStatus", constatus, str(constatus))
-
-                DumpConfigToLog()
         except Exception as e:
-            Domoticz.Log("OnStart error: " + str(e))
+            Domoticz.Error(f"OnStart error: {e}")
+            Domoticz.Error(traceback.format_exc())
 
     def onStop(self):
         """
@@ -392,33 +598,18 @@ class FreeboxPlugin:
         """
         Domoticz.Log("onCommand called for Unit " + str(Unit) +
                      ": Parameter '" + str(Command) + "', Level: " + str(Level))
-        # 2018-04-02 20:26:01.192 User: Admin initiated a switch command (17/Freebox - Presence iPhonedMatthieu/On)
-        # 2018-04-02 20:26:01.209 (Freebox) onCommand called for Unit 5: Parameter 'On', Level: 0
-        # 2018-04-02 20:27:50.550 User: Admin initiated a switch command (17/Freebox - Presence iPhonedMatthieu/Off)
-        # 2018-04-02 20:27:50.552 (Freebox) onCommand called for Unit 5: Parameter 'Off', Level: 0
-        # 2018-04-02 20:28:44.350 User: Admin initiated a switch command (18/Freebox - Presence iPhonedTiphaine/On)
-        # 2018-04-02 20:28:44.380 (Freebox) onCommand called for Unit 6: Parameter 'On', Level: 0
-        unit_id = self.return_unit_id(
-            self.Device.COMMAND, "WIFI")
-        if unit_id == Unit:
-            f = freebox.FbxApp("idPluginDomoticz",
-                               self.token, host=self.freebox_url)
-            if str(Command) == "On":
-                f.wifi_enable(1)
-            else:
-                f.wifi_enable(0)
-            time.sleep(1)
-            # Update Wifi state
-            wifi_state = 1 if f.wifi_state() else 0
-            self.update_device(
-                self.Device.COMMAND, "WIFI", wifi_state, str(wifi_state))
+        try:
+            f = freebox.FbxApp("idPluginDomoticz", self.token, host=self.freebox_url)
+            if Unit == self.return_unit_id(self.Device.COMMAND, "REBOOT"):
+                self._switch_reboot(f)
+            elif Unit == self.return_unit_id(self.Device.COMMAND, "WIFI"):
+                self._switch_wifi(f, Command)
+            elif Unit == 11: # FIXME
+                self._switch_player(f, Command, str(Unit)[-1:])
 
-        unit_id = self.return_unit_id(
-            self.Device.COMMAND, "REBOOT")
-        if unit_id == Unit:
-            f = freebox.FbxApp("idPluginDomoticz",
-                               self.token, host=self.freebox_url)
-            f.reboot()
+        except Exception as e:
+            Domoticz.Error(f"onHeartbeat error: {e}")
+            Domoticz.Error(traceback.format_exc())
 
     def onNotification(self, Name, Subject, Text, Status, Priority, Sound, ImageFile):
         """
@@ -446,95 +637,29 @@ class FreeboxPlugin:
         has failed.
         """
         Domoticz.Debug("onHeartbeat called")
+
+        self._tick = self._tick + 10 # Add 10s (i.e. the default heartbeat)
+        self._tick = self._tick % self._refresh_interval
+        if self._tick != 0:
+            return # To skip beacause refresh interval doesn't reach
+
+        if self.token == "":
+            Domoticz.Log("Pas de token défini.")
+            return
+
         try:
-            if self._lastExecution.minute == datetime.datetime.now().minute:
-                return
-            self._lastExecution = datetime.datetime.now()
-            if self.token == "":
-                Domoticz.Log("Pas de token défini.")
-                return
-            f = freebox.FbxApp("idPluginDomoticz",
-                               self.token,
-                               host=self.freebox_url
-                               )
-
-           # Alarm on Frebox Delta
-            alarminfo = f.alarminfo()
-            for alarm_device in alarminfo:
-                self.updateDeviceIfExist(self.Device.ALARM,
-                                         alarminfo[alarm_device]["label"],
-                                         int(alarminfo[alarm_device]["value"]),
-                                         str(alarminfo[alarm_device]["value"]),
-                                         int(alarminfo[alarm_device]
-                                             ["battery"])
-                                         )
-
-            if self._lastExecution.minute == datetime.datetime.now().minute:
-                return
-            self._lastExecution = datetime.datetime.now()
-
-            usageDisk = f.ls_storage()
-            for disk in usageDisk:
-                self.update_device(self.Device.DISK, disk, int(
-                    float(usageDisk[disk])), str(usageDisk[disk]))
-
-            connections = f.connection_rate()
-            for connection in connections:
-                self.update_device(
-                    self.Device.CONNECTION_RATE,
-                    connection,
-                    int(float(connections[connection])),
-                    str(connections[connection])
-                )
-
-            sysinfo = f.sysinfo()
-            for info in sysinfo:
-                self.update_device(
-                    self.Device.SYSTEM_INFO,
-                    info,
-                    int(float(sysinfo[info])),
-                    str(sysinfo[info])
-                )
-
-            str_ls_macaddr = Parameters["Mode2"]
-            ls_macaddr = str_ls_macaddr.split(";")
-            for macaddress in ls_macaddr:
-                name = f.get_name_from_macaddress(macaddress)
-                presence = 0
-                if name != None:
-                    if f.reachable_macaddress(macaddress):
-                        presence = 1
-                self.update_device(
-                    self.Device.PRESENCE,
-                    macaddress,
-                    presence,
-                    str(presence)
-                )
-
-            online_devices = f.online_devices()
-            for device in online_devices:
-                Domoticz.Debug(
-                    online_devices[device] + " (" + device + ") présent")
-
-            wifi_state = 1 if f.wifi_state() else 0
-            self.update_device(
-                self.Device.COMMAND,
-                "WIFI",
-                wifi_state,
-                str(wifi_state)
-            )
-
-            connection_state = 1 if f.connection_state() else 0
-            self.update_device(
-                self.Device.COMMAND,
-                "WANStatus",
-                connection_state,
-                str(connection_state)
-            )
-
+            f = freebox.FbxApp("idPluginDomoticz", self.token, host=self.freebox_url)
+            self._refresh_devices_storages(f)
+            self._refresh_devices_rates(f)
+            self._refresh_devices_sensors(f)
+            self._refresh_devices_alarm(f)
+            self._refresh_devices_presence(f)
+            self._refresh_devices_wifi(f)
+            self._refresh_devices_wan(f)
+            self._refresh_devices_players(f)
         except Exception as e:
-            Domoticz.Log("onHeartbeat error: " + str(e))
-
+            Domoticz.Error(f"onHeartbeat error: {e}")
+            Domoticz.Error(traceback.format_exc())
 
 global _plugin
 _plugin = FreeboxPlugin()
@@ -586,8 +711,6 @@ def onDisconnect(Connection):
 def onHeartbeat():
     global _plugin
     _plugin.onHeartbeat()
-
-    # Generic helper functions
 
 
 def DumpConfigToLog():

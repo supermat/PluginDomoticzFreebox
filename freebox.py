@@ -23,10 +23,11 @@ from socket import timeout
 import Domoticz
 
 # Globals CONSTANT
-HOST = 'mafreebox.freebox.fr'   # FQDN of freebox
-API_VER = '4'                   # API version
-REGISTER_TMOUT = 30             # Timout in sec (for Obtain an app_token)
-API_TMOUT = 4                   # Timout in sec (for API response)
+HOST = 'https://mafreebox.freebox.fr'   # FQDN of freebox
+API_VER = '8'                           # API version
+TV_API_VER = '8'                        # TV Player API version
+REGISTER_TMOUT = 30                     # Timout in sec (for Obtain an app_token)
+API_TMOUT = 4                           # Timout in sec (for API response)
 CA_FILE = 'freebox_certificates.pem'
 
 
@@ -44,17 +45,20 @@ class FbxCnx:
         request = Request(host + '/api_version')
         try:
             self.secure.load_verify_locations(cafile=cert_path)
-            response = urlopen(request, timeout=API_TMOUT, context=self.secure).read()
+            response = urlopen(request, timeout=API_TMOUT,
+                               context=self.secure).read()
             self.info = json.loads(response.decode())
-            Domoticz.Debug('Supported API version: ' + f"{self.info['api_version']}")
+            Domoticz.Debug('Supported API version: ' +
+                           f"{self.info['api_version']}")
             Domoticz.Debug('Freebox model: ' + f"{self.info['box_model']}")
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('Init error ("/api_version"): ' + error.msg)
         except timeout:
             Domoticz.Error('Timeout when call ("/api_version")')
-        if self.info is None :
-            Domoticz.Error('Fatal error: Unable to initialize Freebox connection!')
-        elif int(float(self.info['api_version'])) < self.api_ver :
+        if self.info is None:
+            Domoticz.Error(
+                'Fatal error: Unable to initialize Freebox connection!')
+        elif int(float(self.info['api_version'])) < self.api_ver:
             Domoticz.Error(f"You need to upgrade Freebox's firmware to use at last API version \
                            {self.api_ver} (current API version: {self.info['api_version']}).")
 
@@ -81,7 +85,8 @@ class FbxCnx:
         request = Request(url=url, data=data, method=method)
         if headers is not None:
             request.headers.update(headers)
-        api_response = urlopen(request, timeout=API_TMOUT, context=self.secure).read()
+        api_response = urlopen(request, timeout=API_TMOUT,
+                               context=self.secure).read()
         Domoticz.Debug('<- API Response: ' + f"{api_response}")
         dict_response = json.loads(api_response.decode())
         return dict_response
@@ -177,12 +182,17 @@ class FbxApp(FbxCnx):
     Args:
         FbxCnx (FbxCnx): Freebox connection
     """
+    tv_player = None
 
-    def __init__(self, app_id, app_token, session_token=None, host=HOST):
+    def __init__(self, app_id, app_token, host=HOST, session_token=None):
         FbxCnx.__init__(self, host)
         self.app_id, self.app_token = app_id, app_token
         self.session_token = self._mksession(
             app_id, app_token) if session_token is None else session_token
+        self.system = self.create_system()
+        self.players = None  # Server may be connected to a Freebox TV Player
+        if self.tv_player is None:
+            self.create_players()
 
     def __del__(self):
         self._disconnect(self.session_token)
@@ -242,10 +252,10 @@ class FbxApp(FbxCnx):
                             label = partition['label']
                             used = partition['used_bytes']
                             total = partition['total_bytes']
-                            Domoticz.Debug('Disk '+label+' ' +
-                                           str(used)+'/'+str(total))
+                            Domoticz.Debug('Usage of disk "' + label + '": ' +
+                                           str(used) + '/' + str(total) + ' bytes')
                             if total > 0:
-                                percent = used/total*100
+                                percent = used / total * 100
                                 result.update(
                                     {str(label): str(round(percent, 2))})
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
@@ -262,9 +272,9 @@ class FbxApp(FbxCnx):
             p_macaddress (str): @mac type 01:02:03:04:05:06
 
         Returns:
-            str: device name
+            str: device name if @mac is know or None
         """
-        result = ""
+        result = None
         try:
             ls_devices = self.get("lan/browser/pub/")
             for device in ls_devices['result']:
@@ -326,36 +336,7 @@ class FbxApp(FbxCnx):
             Domoticz.Error('Timeout')  # Empty list if Error occured
         return result
 
-    def sysinfo(self):
-        """
-        Get all temperatures sensors values
-
-        Returns:
-            (dict of str: str): {sensor: temp} (in °C)
-        """
-        result = {}
-        try:
-            sys = self.get('system/')
-            result.update({str('temp_cpub'): str(
-                round(sys['result']['temp_cpub'], 2))})
-            if sys['result']['board_name'] == 'fbxgw8r':
-                Domoticz.Log('Freebox POP')
-                result.update({str('temp_t1'): str(
-                    round(sys['result']['temp_t1'], 2))})
-                result.update({str('temp_t2'): str(
-                    round(sys['result']['temp_t2'], 2))})
-            else:
-                result.update({str('temp_sw'): str(
-                    round(sys['result']['temp_sw'], 2))})
-                result.update({str('temp_cpum'): str(
-                    round(sys['result']['temp_cpum'], 2))})
-        except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Error('API Error ("system/"): ' + error.msg)
-        except timeout:
-            Domoticz.Error('Timeout')  # Empty list if Error occured
-        return result
-
-    def alarminfo(self): # Only on Freebox Delta
+    def alarminfo(self):  # Only on Freebox Delta
         """
         _summary_
 
@@ -364,8 +345,8 @@ class FbxApp(FbxCnx):
         """
         result = {}
         prerequisite_pattern = '^fbxgw7-r[0-9]+/full$'
-        if re.match(prerequisite_pattern, self.info['box_model']) is None :
-            return result # Return an empty list if model of Freebox isn't compatible with alarm
+        if re.match(prerequisite_pattern, self.info['box_model']) is None:
+            return result  # Return an empty list if model of Freebox isn't compatible with alarm
         try:
             ls_tileset = self.get("home/tileset/all")  # ls_tileset
             if "result" in ls_tileset:
@@ -447,7 +428,7 @@ class FbxApp(FbxCnx):
 
     def connection_rate(self):
         """
-        Get Up and Down rate
+        Get upload and download speed rate (of WAN Interface)
 
         Returns:
             (dict of str: str): {rate_down: rate, rate_up: rate} (Ko/s)
@@ -465,7 +446,7 @@ class FbxApp(FbxCnx):
             Domoticz.Error('Timeout')  # Empty list if Error occured
         return result
 
-    def connection_state(self):
+    def wan_state(self):
         """
         Is WAN link UP or DOWN
 
@@ -476,10 +457,10 @@ class FbxApp(FbxCnx):
         try:
             connection = self.get('connection/')
             if connection['result']['state'] == 'up':
-                Domoticz.Log('Connection is UP')
+                Domoticz.Debug('Connection is UP')
                 state = True
             else:
-                Domoticz.Log('Connection is DOWN')
+                Domoticz.Debug('Connection is DOWN')
                 state = False
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('API Error ("connection/"): ' + error.msg)
@@ -498,8 +479,10 @@ class FbxApp(FbxCnx):
         try:
             wifi = self.get('wifi/config/')
             if wifi['result']['enabled']:
+                Domoticz.Debug('Wifi interface is UP')
                 enabled = True
             else:
+                Domoticz.Debug('Wifi interface is DOWN')
                 enabled = False
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('API Error ("wifi/config/"): ' + error.msg)
@@ -551,9 +534,133 @@ class FbxApp(FbxCnx):
         """
         Reboot the Freebox server
         """
-        Domoticz.Error('Try to reboot with session : ' + self.session_token)
+        Domoticz.Debug('Try to reboot with session : ' + self.session_token)
         response = self.post("system/reboot")
         if response['success']:
             Domoticz.Debug('Reboot initiated')
         else:
             Domoticz.Error('Error: You must grant reboot permission')
+
+    def create_system(self):
+        """
+        Create system information
+
+        Returns:
+            System: Freebox System Object 
+        """
+        self.system = FbxApp.System(self)
+        return self.system
+
+    def create_players(self):
+        """
+        Create sub-objet TV Players
+
+        Returns:
+            Players: Freebox TV Players Object
+        """
+        self.players = FbxApp.Players(self)
+        return self.players
+
+    class System:
+        """
+        Class and method about System (°temp_sensor,...)
+        """
+        def __init__(self, fbxapp):
+            self.server = fbxapp  # to access Outer's class instance "FbxApp" from System Objet
+            self.info = self.getinfo()
+
+        def getinfo(self):
+            result = {}
+            try:
+                response = self.server.get('/system')
+            except (urllib.error.HTTPError, urllib.error.URLError) as error:
+                Domoticz.Error('API Error ("/system"): ' + error.msg)
+            except timeout:
+                Domoticz.Error('Timeout')
+            else:
+                if response['success']:
+                    result = response['result']
+                    Domoticz.Debug('Freebox Server Infos: ' + f"{result}")
+            return result
+
+        def sensors(self):
+            result = {}
+            if self.info["sensors"]:
+                result = self.info["sensors"]
+            return result
+
+
+    class Players:
+        """
+        Class and method for Freebox TV Player
+        """
+
+        def __init__(self, fbxapp):
+            self.server = fbxapp  # to access Outer's class instance "FbxApp" from Players
+            self.info = self.getinfo()
+
+        def getinfo(self):
+            result = {}
+            try:
+                response = self.server.get('/player')
+            except (urllib.error.HTTPError, urllib.error.URLError) as error:
+                Domoticz.Error('API Error ("/player"): ' + error.msg)
+            except timeout:
+                Domoticz.Error('Timeout')
+            else:
+                if response['success']:
+                    self.server.tv_player = True
+                    result = response['result']
+                    Domoticz.Debug(
+                        'Player(s) are registered on the local network')
+                    Domoticz.Debug('Player(s) Infos: ' + f"{result}")
+                else:
+                    self.server.tv_player = False
+                    Domoticz.Error(
+                        'Error: You must grant Player Control permission')
+            return result
+
+        def ls_uid(self):
+            result = []
+            players = self.info
+            for player in players:
+                result.append(player['id'])
+                Domoticz.Debug('Player(s) Id: ' + f"{result}")
+            return result
+
+        def state(self, uid):
+            status = None
+            try:
+                response = self.server.get(
+                    f"/player/{uid}/api/v{TV_API_VER}/status")
+            except (urllib.error.HTTPError, urllib.error.URLError) as error:
+                # If player is shutdown : Error="Gateway Time-out"
+                if error.code == 504:  # error.msg != 'Gateway Time-out'
+                    status = False
+                else:
+                    Domoticz.Error(
+                        'API Error ("/player/' + uid + '/api/v' + TV_API_VER + '/status"): ' + error.msg)
+            except timeout:
+                Domoticz.Error('Timeout')
+            else:
+                if response['success']:
+                    if response['result']['power_state']:
+                        status = True if response['result']['power_state'] == 'running' else False
+            Domoticz.Debug(f"Is watching TV{uid}? : {status}")
+            return status
+
+        def remote(self, uid, remote_code, key, long=False):
+            url = f"http://hd{uid}.freebox.fr/pub/remote_control?code={remote_code}&key={key}"
+            url = url + '&long=true' if long else url
+            try:
+                request = Request(url)
+                response = urlopen(request, timeout=API_TMOUT).read()
+            except (urllib.error.HTTPError, urllib.error.URLError) as error:
+                Domoticz.Error('TV Remote error ("' + url + '"): ' + error.msg)
+            except timeout:
+                Domoticz.Error('Timeout')  # None if Error occured
+            return response
+
+        def shutdown(self, uid, remote_code):
+            ## To Do http://hd{uid}.freebox.fr/pub/remote_control?code={remote_code}&key=power
+            return self.remote(uid, remote_code, "power")
