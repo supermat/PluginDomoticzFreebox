@@ -157,6 +157,52 @@ class FreeboxPlugin:
             self.save_all_devices_dict(dict_devices)
             return uid
 
+    def return_properties_from_id(self, uid):
+        """
+        Find from device ID number the type and name of device
+
+        Args:
+            uid (int): device id
+            
+        Returns:
+            tuple: (type,name)
+        """
+        dict_devices = self.get_all_devices_dict()
+        
+        for device in dict_devices:
+            for name, value in dict_devices[device].items():
+                if value == uid:
+                    return (device, name)
+        return
+    
+    def return_device_from_properties(self, properties):
+        """
+        Return device type from properties
+
+        Args:
+            tuple (type,name): properties
+
+        Returns:
+            str: Device.value
+        """
+        if len(properties) == 2 :
+            return properties[0]
+        return
+    
+    def return_name_from_properties(self, properties):
+        """
+        Return name from properties
+
+        Args:
+            tuple (type,name): properties
+
+        Returns:
+            str: name
+        """
+        if len(properties) == 2 :
+            return properties[1]
+        return
+        
     def unit_exist(self, device, name):
         """
         Find device ID number from is type and name
@@ -184,7 +230,8 @@ class FreeboxPlugin:
             name (str): device name
             n_value (int): Domoticz numeric value
             s_value (str): Domoticz string value
-            battery_level (int, optional): Domoticz battery level. Defaults to None.
+            battery_level (int, optiona:
+            l): Domoticz battery level. Defaults to None.
         """
         if self.unit_exist(device, name):
             unit_id = self.return_unit_id(device, name)
@@ -598,14 +645,16 @@ class FreeboxPlugin:
         """
         Domoticz.Log("onCommand called for Unit " + str(Unit) +
                      ": Parameter '" + str(Command) + "', Level: " + str(Level))
+        properties = self.return_properties_from_id(Unit)
+        device = self.return_device_from_properties(properties)
+        name = self.return_name_from_properties(properties)
         try:
             f = freebox.FbxApp("idPluginDomoticz", self.token, host=self.freebox_url)
-            if Unit == self.return_unit_id(self.Device.COMMAND, "REBOOT"):
-                self._switch_reboot(f)
-            elif Unit == self.return_unit_id(self.Device.COMMAND, "WIFI"):
-                self._switch_wifi(f, Command)
-            elif Unit == 11: # FIXME
-                self._switch_player(f, Command, str(Unit)[-1:])
+            if device == self.Device.COMMAND.value:
+                if name == "REBOOT": self._switch_reboot(f)
+                elif name == "WIFI": self._switch_wifi(f, Command)
+            elif device == self.Device.PLAYER.value:
+                self._switch_player(f, Command, str(name)[-1:])
 
         except Exception as e:
             Domoticz.Error(f"onHeartbeat error: {e}")
