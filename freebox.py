@@ -203,8 +203,8 @@ class FbxApp(FbxCnx):
         retour = {}
         try:
             connection = self.com( "connection/")
-            retour.update({str('rate_down'):str(connection["result"]["rate_down"]/1024/8)})
-            retour.update({str('rate_up'):str(connection["result"]["rate_up"]/1024/8)})
+            retour.update({str('rate_down'):str(connection["result"]["rate_down"]/1024)})
+            retour.update({str('rate_up'):str(connection["result"]["rate_up"]/1024)})
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('La Freebox semble indisponible : '+ error.msg)
         except timeout:
