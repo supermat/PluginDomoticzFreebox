@@ -4,7 +4,7 @@
 # Credit: https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 #
 """
-<plugin key="Freebox" name="Freebox (via API)" author="supermat &amp; ilionel" version="2.1.2" wikilink="https://www.domoticz.com/wiki/Plugins" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
+<plugin key="Freebox" name="Freebox (via API)" author="supermat &amp; ilionel" version="2.1.3" wikilink="https://www.domoticz.com/wiki/Plugins" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
     <description>
         <br/>
         <h2>Initialisation</h2><br/>
@@ -81,6 +81,7 @@ class FreeboxPlugin:
         COMMAND = 'Commande'
         ALARM = 'Alarme'
         PLAYER = 'TVPlayer'
+        PRECORD = 'ProgrammedRecord'
 
     enabled = False
     token = ""
@@ -496,6 +497,24 @@ class FreeboxPlugin:
             Domoticz.Log(f"Le player TV{uid} est " + POWER_STATE[player_state])
             self.update_device(self.Device.PLAYER, unit_name, player_state, str(player_state))
 
+    def _create_devices_precord(self,f):
+        # Create Next Programmed Record counter item
+        timestamp = f.next_pvr_precord_timestamp()
+        unit_id = self.return_unit_id(
+            self.Device.PRECORD, "NextPrecord")
+        if unit_id not in Devices:
+            device = Domoticz.Device(
+                Unit=unit_id,
+                Name="Next Record In",
+                TypeName="Custom",
+                Options={"Custom": "1;s"},
+                Used=1
+                )
+            device.Create()
+            Domoticz.Log(f"Nouveau dispositif: '{self.Device.PRECORD.value}' -> 'NextPrecord'")
+        Domoticz.Log("Prochain enregistrement TV dans " + str(timestamp) + " secondes")
+        self.update_device(self.Device.PRECORD, "NextPrecord", timestamp, str(timestamp))
+
     def _refresh_devices_storages(self, f):
         # Update Disk metics
         disks = f.ls_storage()
@@ -566,6 +585,12 @@ class FreeboxPlugin:
             Domoticz.Debug(f"Le player TV{uid} est " + POWER_STATE[player_state])
             self.update_device(self.Device.PLAYER, unit_name, player_state, str(player_state))
 
+    def _refresh_devices_precord(self,f):
+        # Update "Next Programmed record In" value
+        timestamp = f.next_pvr_precord_timestamp()
+        Domoticz.Debug("Prochain enregistrement TV dans " + str(timestamp) + " secondes")
+        self.update_device(self.Device.PRECORD, "NextPrecord", timestamp, str(timestamp))
+
     def _switch_reboot(self, f):
         f.reboot()
 
@@ -604,6 +629,7 @@ class FreeboxPlugin:
             self._create_devices_wifi(f)
             self._create_devices_wan(f)
             self._create_devices_players(f)
+            self._create_devices_precord(f)
             DumpConfigToLog()
         except Exception as e:
             Domoticz.Error(f"OnStart error: {e}")
@@ -706,6 +732,7 @@ class FreeboxPlugin:
             self._refresh_devices_wifi(f)
             self._refresh_devices_wan(f)
             self._refresh_devices_players(f)
+            self._refresh_devices_precord(f)
         except Exception as e:
             Domoticz.Error(f"onHeartbeat error: {e}")
             Domoticz.Error(traceback.format_exc())

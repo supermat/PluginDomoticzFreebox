@@ -71,11 +71,13 @@ Vous pouvez choisir d’inclure ou non ces dispositifs à depuis l'interface ded
 | Système | Remontées des températures des sondes internes à la Freebox |
 | Disque | Affichage du taux d'occupation (en %) de chaque partitions du/des disque(s) connecté(s) à la Freebox |
 | Présence | Test la présence d'un équipement. Pour chaque adresse mac renseignée, si celle-ci est joignable par la Freebox, un dispositif de type Switch sera créé. Il indiquera la disponibilité (on) ou l'absence (off) de l'équipement. Cela permet de déduire la présence d'une personne au domicile en testant (par exemple) la présence de sont smartphone. |
-| Alarme | Dispositif de type Switch permettant de voir l'état de l'alarme (active/inactive) et de piloter son activation/désactivation |
 | Wifi | Affichage du statut du wifi (actif/inactif) et Switch permettant de modifier l'état (activation/désactivation) |
 | Reboot | Switch permettant le redémarrage de la Freebox |
 | WANStatus | État de la connexion Internet |
 | Debits | Débits montants et descendants en Ko/s |
+| Alarme | Dispositif de type Switch permettant de voir l'état de l'alarme (active/inactive) et de piloter son activation/désactivation |
+| Players | Dispositif(s) de type Switch permettant d'alumer / éteindre le(s) player(s) TV |
+| Precord | Dispositif indiquant dans combien de temps aura lieu le prochain enregistrement de programme TV. L'idée est de déterminer plus facilement si le serveur Freebox peut-être éteint ou non (exemple en pilotant une mutiprise la nuit) |
 
 IMPORTANT : Pour piloter le wifi, le redémarrage de la box, gérer le player ou l'alarme, il est nécessaire d'accorder des droits spécifiques au plugin. Effectivement après l'inscription, le plugin n'aura que de simples droits de consultations.
 Les droits de modification devront être positionnés manuellement via l'interface Freebox OS (depuis un navigateur http://mafreebox.freebox.fr) : menu "Paramètres de la Freebox" > "Gestion des accès" > "onglet Applications", sélectionner le plugin Domoticz puis cocher :
@@ -102,3 +104,4 @@ Note : Un fichier ```devicemapping.json``` est créé pour garder l'association 
 | 2.1.0 | Amélioration de la robustesse du code suite au passage en 2.0 |
 | 2.1.1 | Possibilitée de paramétrer la fréquence de rafraîchissement des valeurs |
 | 2.1.2 | Possibilité d'éteindre le Player via Domoticz |
+| 2.1.3 | Ajout compteur indiquant le délai (en seconde) avant le prochain enregistrement |

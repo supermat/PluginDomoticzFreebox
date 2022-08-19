@@ -541,6 +541,37 @@ class FbxApp(FbxCnx):
         else:
             Domoticz.Error('Error: You must grant reboot permission')
 
+    def next_pvr_precord_timestamp(self, relative=True):
+        """
+        Next schedule / programmed PVR record
+        
+        Args:
+            relative (bool, optional): if True time result is relative else absolute. Defaults to True.
+        
+        Returns:
+            int: start_timestamp
+        """
+        now = int(time.time())
+        next_recording = now + 31556926 # 1 Year in seconds
+        try:
+            response = self.get('/pvr/programmed')
+        except (urllib.error.HTTPError, urllib.error.URLError) as error:
+            Domoticz.Error('API Error ("/pvr/programmed"): ' + error.msg)
+        except timeout:
+            Domoticz.Error('Timeout')
+        else:
+            if response['success']:
+                result = response['result']
+                Domoticz.Debug('PVR Programmed List: ' + f"{result}")
+                for pvr in result:
+                    if pvr['state'] == 'waiting_start_time':
+                        recording_start = int(float(pvr['start']))
+                        next_recording = recording_start if recording_start < next_recording else next_recording
+                    elif pvr['state'] == 'starting' or pvr['state'] == 'running' or pvr['state'] == 'running_error':
+                        next_recording = 0 if relative else now
+                        return next_recording
+        return (next_recording - now) if relative else next_recording
+
     def create_system(self):
         """
         Create system information
