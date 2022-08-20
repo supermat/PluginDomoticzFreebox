@@ -105,3 +105,4 @@ Note : Un fichier ```devicemapping.json``` est créé pour garder l'association 
 | 2.1.1 | Possibilitée de paramétrer la fréquence de rafraîchissement des valeurs |
 | 2.1.2 | Possibilité d'éteindre le Player via Domoticz |
 | 2.1.3 | Ajout compteur indiquant le délai (en seconde) avant le prochain enregistrement |
+| 2.1.4 | Suivi de recommandations Sonarcube (amélioration de la qualité du code) |

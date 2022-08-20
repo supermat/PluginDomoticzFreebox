@@ -4,7 +4,7 @@
 # Credit: https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz/
 #
 """
-<plugin key="Freebox" name="Freebox (via API)" author="supermat &amp; ilionel" version="2.1.3" wikilink="https://www.domoticz.com/wiki/Plugins" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
+<plugin key="Freebox" name="Freebox (via API)" author="supermat &amp; ilionel" version="2.1.4" wikilink="https://www.domoticz.com/wiki/Plugins" externallink="https://matdomotique.wordpress.com/2018/03/25/plugin-freebox-pour-domoticz">
     <description>
         <br/>
         <h2>Initialisation</h2><br/>
@@ -62,7 +62,7 @@ JSON_FILE = 'devicemapping.json'
 
 POWER_STATE = ("OFF", "ON")
 LINK_STATE  = ("DOWN", "UP")
-PRESENCE_STATE = ("en ligne", "hors ligne")
+PRESENCE_STATE = ("hors ligne", "en ligne")
 RATE_TYPE = {"rate_down": "download", "rate_up": "upload"}
 SWITCH_CMD = {"Off": 0, "On": 1}
 
@@ -507,7 +507,7 @@ class FreeboxPlugin:
                 )
             device.Create()
             Domoticz.Log(f"Nouveau dispositif: '{self.Device.PRECORD.value}' -> 'NextPrecord'")
-        Domoticz.Log("Prochain enregistrement TV dans " + str(timestamp) + " secondes")
+        Domoticz.Log(self._str_precode_state(timestamp))
         self.update_device(self.Device.PRECORD, "NextPrecord", timestamp, str(timestamp))
 
     def _refresh_devices_storages(self, f):
@@ -567,7 +567,7 @@ class FreeboxPlugin:
     def _refresh_devices_wan(self, f):
         # Update "WAN interface" Domoticz switch state
         wan_state = 1 if f.wan_state() else 0
-        Domoticz.Log("La connexion Internet est " + LINK_STATE[wan_state])
+        Domoticz.Debug("La connexion Internet est " + LINK_STATE[wan_state])
         self.update_device(self.Device.COMMAND, "WANStatus", wan_state, str(wan_state))
 
     def _refresh_devices_players(self, f):
@@ -583,7 +583,7 @@ class FreeboxPlugin:
     def _refresh_devices_precord(self,f):
         # Update "Next Programmed record In" value
         timestamp = f.next_pvr_precord_timestamp()
-        Domoticz.Debug("Prochain enregistrement TV dans " + str(timestamp) + " secondes")
+        Domoticz.Debug(self._str_precode_state(timestamp))
         self.update_device(self.Device.PRECORD, "NextPrecord", timestamp, str(timestamp))
 
     def _switch_reboot(self, f):
@@ -606,6 +606,14 @@ class FreeboxPlugin:
             time.sleep(1)
             # Update Player state
             self._refresh_devices_players(f)
+
+    def _str_precode_state(self, timestamp):
+        if timestamp == -1:
+            return "Aucun enregistrement n'est programmé"
+        elif timestamp == 0:
+            return "Un enregistrement est en cours"
+        else:
+            return "Prochain enregistrement TV dans " + str(timestamp) + " secondes"
 
     def onStart(self):
         """

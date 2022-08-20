@@ -238,6 +238,45 @@ class FbxApp(FbxCnx):
         """
         return self._request(path, 'GET', {"X-Fbx-App-Auth": self.session_token})
 
+    def call(self, path):
+        """
+        Call Freebox API
+
+        Args:
+            path (str): api_url
+
+        Returns:
+            (dict of str: str): Freebox API Response as dictionary
+        """
+        result = {}
+        try:
+            api_result = self.get(path)
+            if api_result['success']:
+                if 'result' in api_result:
+                    result = api_result['result']
+        except (urllib.error.HTTPError, urllib.error.URLError) as error:
+            Domoticz.Error('API Error ("' + path + '"): ' + error.msg)
+        except timeout:
+            Domoticz.Error('Timeout when call ("' + path + '")')
+        return result
+
+    def percent(self, value, total, around=2):
+        """
+        Formula of percentage : value / total * 100
+
+        Args:
+            value (int): numerator
+            total (int): denominator
+            around (int, optional): decimal precision. Defaults to 2.
+
+        Returns:
+            float: calculated percent
+        """
+        percent = 0
+        if (total > 0) :
+            percent = value / total * 100
+        return round(percent, around)
+
     def ls_storage(self):
         """
         List storages attached to the Freebox server
@@ -246,30 +285,18 @@ class FbxApp(FbxCnx):
             (dict of str: str): {disk_label: % of usage}
         """
         result = {}
-        try:
-            ls_disk = self.get('storage/disk/')
-            if 'result' in ls_disk:  # /!\ Freebox mini 4K don't have any disk
-                ls_disk = ls_disk['result']
-            else :
-                ls_disk = {}
-        except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Error('API Error ("storage/disk/"): ' + error.msg)
-        except timeout:
-            Domoticz.Error('Timeout when call ("storage/disk/")')
-        else :
-            for disk in ls_disk:
-                if not 'partitions' in disk:  # /!\ If disk don't have any partition
-                    continue
-                for partition in disk['partitions']:
-                    label = partition['label']
-                    used = partition['used_bytes']
-                    total = partition['total_bytes']
-                    Domoticz.Debug('Usage of disk "' + label + '": ' +
-                                   str(used) + '/' + str(total) + ' bytes')
-                    if total > 0:
-                        percent = used / total * 100
-                        result.update(
-                            {str(label): str(round(percent, 2))})
+        ls_disk = self.call('storage/disk/')
+        for disk in ls_disk:
+            if not 'partitions' in disk:  # /!\ If disk don't have any partition
+                continue
+            for partition in disk['partitions']:
+                label = partition['label']
+                used = partition['used_bytes']
+                total = partition['total_bytes']
+                Domoticz.Debug('Usage of disk "' + label + '": ' +
+                               str(used) + '/' + str(total) + ' bytes')
+
+                result.update({str(label): str(self.percent(used, total))})
         return result
 
     def get_name_from_macaddress(self, p_macaddress):
@@ -283,16 +310,11 @@ class FbxApp(FbxCnx):
             str: device name if @mac is know or None
         """
         result = None
-        try:
-            ls_devices = self.get("lan/browser/pub/")
-            for device in ls_devices['result']:
-                macaddress = device['id']
-                if ("ETHER-" + p_macaddress.upper()) == macaddress.upper():
-                    result = device['primary_name']
-        except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Error('API Error ("lan/browser/pub/"): ' + error.msg)
-        except timeout:
-            Domoticz.Error('Timeout')
+        ls_devices = self.call('lan/browser/pub/')
+        for device in ls_devices:
+            macaddress = device['id']
+            if ("ETHER-" + p_macaddress.upper()) == macaddress.upper():
+                result = device['primary_name']
         return result
 
     def reachable_macaddress(self, p_macaddress):
@@ -306,19 +328,14 @@ class FbxApp(FbxCnx):
             bool: True if reachable else False
         """
         result = False
-        try:
-            ls_devices = self.get('lan/browser/pub/')
-            for device in ls_devices['result']:
-                macaddress = device['id']
-                if ("ETHER-" + p_macaddress.upper()) == macaddress.upper():
-                    reachable = device['reachable']
-                    active = device['active']
-                    if reachable and active:
-                        result = True
-        except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Error('API Error ("lan/browser/pub/"): ' + error.msg)
-        except timeout:
-            Domoticz.Error('Timeout')  # False if Error occurred
+        ls_devices = self.call('lan/browser/pub/')
+        for device in ls_devices:
+            macaddress = device['id']
+            if ("ETHER-" + p_macaddress.upper()) == macaddress.upper():
+                reachable = device['reachable']
+                if reachable:
+                    result = True
+                    break
         return result
 
     def online_devices(self):
@@ -329,19 +346,13 @@ class FbxApp(FbxCnx):
             (dict of str: str): {macaddress: name}
         """
         result = {}
-        try:
-            ls_devices = self.get("lan/browser/pub/")
-            for device in ls_devices['result']:
-                name = device['primary_name']
-                reachable = device['reachable']
-                active = device['active']
-                macaddress = device['id']
-                if reachable and active:
-                    result.update({macaddress: name})
-        except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Error('API Error ("lan/browser/pub/"): ' + error.msg)
-        except timeout:
-            Domoticz.Error('Timeout')  # Empty list if Error occurred
+        ls_devices = self.call('lan/browser/pub/')
+        for device in ls_devices:
+            name = device['primary_name']
+            reachable = device['reachable']
+            macaddress = device['id']
+            if reachable:
+                result.update({macaddress: name})
         return result
 
     def alarminfo(self):  # Only on Freebox Delta
@@ -355,83 +366,76 @@ class FbxApp(FbxCnx):
         prerequisite_pattern = '^fbxgw7-r[0-9]+/full$'
         if re.match(prerequisite_pattern, self.info['box_model']) is None:
             return result  # Return an empty list if model of Freebox isn't compatible with alarm
-        try:
-            ls_tileset = self.get("home/tileset/all")  # ls_tileset
-            if "result" in ls_tileset:
-                for node in ls_tileset["result"]:
-                    device = {}
-                    label = ''
-                    if node["type"] == "alarm_control":
-                        device.update({"type": str(node["type"])})
-                        for data in node["data"]:
-                            if (data["ep_id"] == 11) and node["type"] == "alarm_control":
-                                label = data["label"]
-                                if data['value'] == 'alarm1_armed':
-                                    value = 1
-                                    device.update(
-                                        {"alarm1_status": str(value)})
-                                elif data['value'] == 'alarm1_arming':
-                                    value = -1
-                                    device.update(
-                                        {"alarm1_status": str(value)})
-                                else:
-                                    value = 0
-                                    device.update(
-                                        {"alarm1_status": str(value)})
-                                if data['value'] == 'alarm2_armed':
-                                    value = 1
-                                    device.update(
-                                        {"alarm2_status": str(value)})
-                                elif data['value'] == 'alarm2_arming':
-                                    value = -1
-                                    device.update(
-                                        {"alarm2_status": str(value)})
-                                else:
-                                    value = 0
-                                    device.update(
-                                        {"alarm2_status": str(value)})
-                                device.update({"label": str(label)})
-                            elif (data["ep_id"] == 13) and node["type"] == "alarm_control":  # error
-                                status_error = data["value"]
-                                device.update(
-                                    {"status_error": str(status_error)})
-                            elif data["name"] == 'battery_warning':
-                                battery = data["value"]
-                                device.update({"battery": str(battery)})
-                            device1 = device.copy()
-                            device2 = device.copy()
-                            if 'alarm1_status' in device1:
-                                device1['value'] = device1['alarm1_status']
-                                device1['label'] = device1['label']+'1'
-                            if 'alarm2_status' in device2:
-                                device2['value'] = device2['alarm2_status']
-                                device2['label'] = device2['label']+'2'
-                            result.update({device1['label']: device1})
-                            result.update({device2['label']: device2})
-
-            ls_nodes = self.get("home/nodes")
-            if "result" in ls_nodes:
-                for node in ls_nodes["result"]:
-                    device = {}
-                    label = ''
-                    if ((node["category"] == "pir") or (node["category"] == "dws")):
-                        label = node["label"]
+        nodes = self.call('home/tileset/all')
+        for node in nodes:
+            device = {}
+            label = ''
+            if node["type"] == "alarm_control":
+                device.update({"type": str(node["type"])})
+                for data in node["data"]:
+                    if (data["ep_id"] == 11) and node["type"] == "alarm_control":
+                        label = data["label"]
+                        if data['value'] == 'alarm1_armed':
+                            value = 1
+                            device.update(
+                                {"alarm1_status": str(value)})
+                        elif data['value'] == 'alarm1_arming':
+                            value = -1
+                            device.update(
+                                {"alarm1_status": str(value)})
+                        else:
+                            value = 0
+                            device.update(
+                                {"alarm1_status": str(value)})
+                        if data['value'] == 'alarm2_armed':
+                            value = 1
+                            device.update(
+                                {"alarm2_status": str(value)})
+                        elif data['value'] == 'alarm2_arming':
+                            value = -1
+                            device.update(
+                                {"alarm2_status": str(value)})
+                        else:
+                            value = 0
+                            device.update(
+                                {"alarm2_status": str(value)})
                         device.update({"label": str(label)})
-                        device.update({"type": str(node["category"])})
-                        for endpoint in node["show_endpoints"]:
-                            if endpoint["name"] == 'battery':
-                                battery = endpoint["value"]
-                                device.update({"battery": str(battery)})
-                            elif endpoint["name"] == 'trigger':
-                                if endpoint["value"]:
-                                    device.update({"value": 0})
-                                elif not endpoint["value"]:
-                                    device.update({"value": 1})
-                            result.update({label: device})
-        except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Error('API Error ("home/tileset/all"): ' + error.msg)
-        except timeout:
-            Domoticz.Error('Timeout')  # Empty list if Error occurred
+                    elif (data["ep_id"] == 13) and node["type"] == "alarm_control":  # error
+                        status_error = data["value"]
+                        device.update(
+                            {"status_error": str(status_error)})
+                    elif data["name"] == 'battery_warning':
+                        battery = data["value"]
+                        device.update({"battery": str(battery)})
+                    device1 = device.copy()
+                    device2 = device.copy()
+                    if 'alarm1_status' in device1:
+                        device1['value'] = device1['alarm1_status']
+                        device1['label'] = device1['label']+'1'
+                    if 'alarm2_status' in device2:
+                        device2['value'] = device2['alarm2_status']
+                        device2['label'] = device2['label']+'2'
+                    result.update({device1['label']: device1})
+                    result.update({device2['label']: device2})
+
+            nodes = self.call("home/nodes")
+            for node in nodes:
+                device = {}
+                label = ''
+                if ((node["category"] == "pir") or (node["category"] == "dws")):
+                    label = node["label"]
+                    device.update({"label": str(label)})
+                    device.update({"type": str(node["category"])})
+                    for endpoint in node["show_endpoints"]:
+                        if endpoint["name"] == 'battery':
+                            battery = endpoint["value"]
+                            device.update({"battery": str(battery)})
+                        elif endpoint["name"] == 'trigger':
+                            if endpoint["value"]:
+                                device.update({"value": 0})
+                            elif not endpoint["value"]:
+                                device.update({"value": 1})
+                        result.update({label: device})
         return result
 
     def connection_rate(self):
@@ -442,16 +446,11 @@ class FbxApp(FbxCnx):
             (dict of str: str): {rate_down: rate, rate_up: rate} (ko/s)
         """
         result = {}
-        try:
-            connection = self.get('connection/')
-            result.update({str('rate_down'): str(
-                connection['result']['rate_down']/1024)})
-            result.update({str('rate_up'): str(
-                connection['result']['rate_up']/1024)})
-        except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Error('API Error ("connection/"): ' + error.msg)
-        except timeout:
-            Domoticz.Error('Timeout')  # Empty list if Error occurred
+        connection = self.call('connection/')
+        if connection['rate_down']:
+            result.update({str('rate_down'): str(connection['rate_down']/1024)})
+        if connection['rate_up']:
+            result.update({str('rate_up'): str(connection['rate_up']/1024)})
         return result
 
     def wan_state(self):
@@ -462,18 +461,13 @@ class FbxApp(FbxCnx):
             bool: True if "UP" else False
         """
         state = None
-        try:
-            connection = self.get('connection/')
-            if connection['result']['state'] == 'up':
-                Domoticz.Debug('Connection is UP')
-                state = True
-            else:
-                Domoticz.Debug('Connection is DOWN')
-                state = False
-        except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Error('API Error ("connection/"): ' + error.msg)
-        except timeout:
-            Domoticz.Error('Timeout')  # None if Error occurred
+        connection = self.call('connection/')
+        if connection['state'] == 'up':
+            Domoticz.Debug('Connection is UP')
+            state = True
+        else:
+            Domoticz.Debug('Connection is DOWN')
+            state = False
         return state
 
     def wifi_state(self):
@@ -484,18 +478,13 @@ class FbxApp(FbxCnx):
             bool: True if "UP" else False
         """
         enabled = None
-        try:
-            wifi = self.get('wifi/config/')
-            if wifi['result']['enabled']:
-                Domoticz.Debug('Wifi interface is UP')
-                enabled = True
-            else:
-                Domoticz.Debug('Wifi interface is DOWN')
-                enabled = False
-        except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Error('API Error ("wifi/config/"): ' + error.msg)
-        except timeout:
-            Domoticz.Error('Timeout')  # None if Error occurred
+        wifi = self.call('wifi/config/')
+        if wifi['enabled']:
+            Domoticz.Debug('Wifi interface is UP')
+            enabled = True
+        else:
+            Domoticz.Debug('Wifi interface is DOWN')
+            enabled = False
         return enabled
 
     def wifi_enable(self, switch_on):
@@ -559,25 +548,21 @@ class FbxApp(FbxCnx):
         Returns:
             int: start_timestamp
         """
+        precord = False
         now = int(time.time())
-        next_recording = now + 31556926 # 1 Year in seconds
-        try:
-            response = self.get('/pvr/programmed')
-        except (urllib.error.HTTPError, urllib.error.URLError) as error:
-            Domoticz.Error('API Error ("/pvr/programmed"): ' + error.msg)
-        except timeout:
-            Domoticz.Error('Timeout')
-        else:
-            if response['success']:
-                result = response['result']
-                Domoticz.Debug('PVR Programmed List: ' + f"{result}")
-                for pvr in result:
-                    if pvr['state'] == 'waiting_start_time':
-                        recording_start = int(float(pvr['start']))
-                        next_recording = recording_start if recording_start < next_recording else next_recording
-                    elif pvr['state'] == 'starting' or pvr['state'] == 'running' or pvr['state'] == 'running_error':
-                        next_recording = 0 if relative else now
-                        return next_recording
+        next_recording = now -1 # -1 if none programmed PVR record
+        result = self.call('/pvr/programmed')
+        Domoticz.Debug('PVR Programmed List: ' + f"{result}")
+        for pvr in result:
+            if pvr['state'] == 'waiting_start_time':
+                recording_start = int(float(pvr['start']))
+                if not precord:
+                    next_recording = recording_start
+                    precord = True
+                next_recording = recording_start if recording_start < next_recording else next_recording
+            elif pvr['state'] == 'starting' or pvr['state'] == 'running' or pvr['state'] == 'running_error':
+                next_recording = now
+                break
         return (next_recording - now) if relative else next_recording
 
     def create_system(self):
@@ -609,17 +594,8 @@ class FbxApp(FbxCnx):
             self.info = self.getinfo()
 
         def getinfo(self):
-            result = {}
-            try:
-                response = self.server.get('/system')
-            except (urllib.error.HTTPError, urllib.error.URLError) as error:
-                Domoticz.Error('API Error ("/system"): ' + error.msg)
-            except timeout:
-                Domoticz.Error('Timeout')
-            else:
-                if response['success']:
-                    result = response['result']
-                    Domoticz.Debug('Freebox Server Infos: ' + f"{result}")
+            result = self.server.call('/system')
+            Domoticz.Debug('Freebox Server Infos: ' + f"{result}")
             return result
 
         def sensors(self):
@@ -639,24 +615,14 @@ class FbxApp(FbxCnx):
             self.info = self.getinfo()
 
         def getinfo(self):
-            result = {}
-            try:
-                response = self.server.get('/player')
-            except (urllib.error.HTTPError, urllib.error.URLError) as error:
-                Domoticz.Error('API Error ("/player"): ' + error.msg)
-            except timeout:
-                Domoticz.Error('Timeout')
+            result = self.server.call('/player')
+            if result:
+                self.server.tv_player = True
+                Domoticz.Debug('Player(s) are registered on the local network')
+                Domoticz.Debug('Player(s) Infos: ' + f"{result}")
             else:
-                if response['success']:
-                    self.server.tv_player = True
-                    result = response['result']
-                    Domoticz.Debug(
-                        'Player(s) are registered on the local network')
-                    Domoticz.Debug('Player(s) Infos: ' + f"{result}")
-                else:
-                    self.server.tv_player = False
-                    Domoticz.Error(
-                        'Error: You must grant Player Control permission')
+                self.server.tv_player = False
+                Domoticz.Error('Error: You must grant Player Control permission')
             return result
 
         def ls_uid(self):
