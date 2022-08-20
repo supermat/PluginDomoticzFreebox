@@ -222,6 +222,25 @@ class FreeboxPlugin:
                 return True
         return False
 
+    def _update_device(self, unit_id, category, name, action='update', n_value=None, s_value=None, battery_level=None):
+        log = "Le dipositif de type " + category.value + " associé à " + name
+        if action == 'update':
+            log = log + " a été mis à jour " + str(n_value) + "/" + str(s_value)
+            if battery_level is not None:
+                log = log + \
+                    " - battery level: " + \
+                        str(Devices[unit_id].BatteryLevel) + "/" + str(battery_level)
+                Devices[unit_id].Update(nValue=n_value, sValue=s_value, BatteryLevel=battery_level)
+            else:
+                Devices[unit_id].Update(nValue=n_value, sValue=s_value)
+        elif action == 'up-to-date':
+            log = log + " est déjà à jour."
+        elif action == 'delete':
+            log = log + " a été supprimé dans Domoticz."
+        elif action == 'unknown':
+            log = log + " n'a pas été créé dans Domoticz. Veuillez désactiver et réactiver le plugin, en autorisant l'ajout de nouveaux dispositifs."
+        Domoticz.Debug(log)
+
     def update_device(self, device, name, n_value, s_value, battery_level=None):
         """
         Update Domoticz value of a Freebox device
@@ -231,42 +250,37 @@ class FreeboxPlugin:
             name (str): device name
             n_value (int): Domoticz numeric value
             s_value (str): Domoticz string value
-            battery_level (int, optiona:
+            battery_level (int, optional:
             l): Domoticz battery level. Defaults to None.
         """
-        if self.unit_exist(device, name):
-            unit_id = self.return_unit_id(device, name)
-            if unit_id in Devices:
-                if ((device.value == self.Device.ALARM.value) and (
-                        (Devices[unit_id].sValue != s_value) or (
-                            Devices[unit_id].BatteryLevel != battery_level)
+        unit_id = None
+        if not self.unit_exist(device, name):
+            self._update_device(unit_id, device, name, 'unknown')
+            # Device not exist
+            return
+        unit_id = self.return_unit_id(device, name)
+        if not unit_id in Devices:
+            self._update_device(unit_id, device, name, 'delete')
+            # Device as been deleted
+            return
+        if ((device.value == self.Device.ALARM.value) and (
+                (Devices[unit_id].sValue != s_value) or (
+                    Devices[unit_id].BatteryLevel != battery_level)
                 )
-                ):
-                    Devices[unit_id].Update(
-                        nValue=n_value, sValue=s_value, BatteryLevel=battery_level)
-                    Domoticz.Debug("Le dipositif de type " + device.value + " associé à " +
-                                   name + " a été mis à jour " + str(n_value) + "/" + str(s_value) +
-                                   "/"+str(Devices[unit_id].BatteryLevel) + "/" + str(battery_level))
-                # Test if PRESENCE are already up-to-date
-                elif device.value != self.Device.PRESENCE.value \
-                        or (
-                            device.value == self.Device.PRESENCE.value
-                            and
-                            Devices[unit_id].sValue != s_value
-                            ):
-                    Devices[unit_id].Update(nValue=n_value, sValue=s_value)
-                    Domoticz.Debug("Le dipositif de type " + device.value + " associé à " +
-                                   name + " a été mis à jour " + str(n_value) + "/" + str(s_value))
-                else:
-                    Domoticz.Debug("Le dipositif de type " + device.value +
-                                   " associé à " + name + " est déjà à jour.")
-            else:
-                Domoticz.Debug("Le dipositif de type " + device.value +
-                               " associé à " + name + " a été supprimé dans Domoticz.")
-        else:
-            Domoticz.Debug("Le dipositif de type " + device.value + " associé à " + name +
-                           " n'a pas été créé dans Domoticz. Veuillez désactiver et réactiver le plugin, en autorisant l'ajout de nouveaux dispositifs.")
+            ):
+            self._update_device(unit_id, device, name, 'update', n_value, s_value, battery_level)
 
+        # Test if PRESENCE are already up-to-date
+        elif device.value != self.Device.PRESENCE.value \
+                or (
+                    device.value == self.Device.PRESENCE.value
+                    and
+                    Devices[unit_id].sValue != s_value
+                    ):
+            self._update_device(unit_id, device, name, 'update', n_value, s_value)
+        else:
+            self._update_device(unit_id, device, name, 'up-to-date')
+                        
     def init(self):
         """
         Initialize the connection with Freebox server.
