@@ -307,7 +307,7 @@ class FreeboxPlugin:
             token = freebox.FbxCnx(self.freebox_url).register(
                 "idPluginDomoticz", "Plugin Freebox", "1", "Domoticz")
             # We got a Token thanks to freebox.FbxCnx
-            if token:
+            if token != "":
                 Domoticz.Log(
                     "------------------------------------------------------------------------------")
                 Domoticz.Log(
@@ -400,12 +400,7 @@ class FreeboxPlugin:
             keyunit = self.return_unit_id(
                 self.Device.ALARM, alarminfo[alarm_device]['label'])
             if (keyunit not in Devices):
-                if (alarminfo[alarm_device]['type']) == 'alarm_control':
-                    device = Domoticz.Device(
-                        Unit=keyunit, Name=alarminfo[alarm_device]['label'], TypeName="Switch", Switchtype=0)
-                    device.Create()
-                    Domoticz.Log(f"Nouveau dispositif: '{self.Device.ALARM.value}' -> '{alarminfo[alarm_device]['label']}'")
-                elif (alarminfo[alarm_device]['type']) == 'dws':
+                if (alarminfo[alarm_device]['type']) == 'alarm_control' or (alarminfo[alarm_device]['type']) == 'dws':
                     device = Domoticz.Device(
                         Unit=keyunit, Name=alarminfo[alarm_device]['label'], TypeName="Switch", Switchtype=0)
                     device.Create()
@@ -618,18 +613,18 @@ class FreeboxPlugin:
         """
         Domoticz.Log("onStart called")
         try:
-            self.init()
-            f = freebox.FbxApp("idPluginDomoticz", self.token, self.freebox_url)
-            self._create_devices_reboot()
-            self._create_devices_storages(f)
-            self._create_devices_rates(f)
-            self._create_devices_sensors(f)
-            self._create_devices_alarm(f)
-            self._create_devices_presence(f)
-            self._create_devices_wifi(f)
-            self._create_devices_wan(f)
-            self._create_devices_players(f)
-            self._create_devices_precord(f)
+            if self.init() :
+                f = freebox.FbxApp("idPluginDomoticz", self.token, self.freebox_url)
+                self._create_devices_reboot()
+                self._create_devices_storages(f)
+                self._create_devices_rates(f)
+                self._create_devices_sensors(f)
+                self._create_devices_alarm(f)
+                self._create_devices_presence(f)
+                self._create_devices_wifi(f)
+                self._create_devices_wan(f)
+                self._create_devices_players(f)
+                self._create_devices_precord(f)
             DumpConfigToLog()
         except Exception as e:
             Domoticz.Error(f"OnStart error: {e}")

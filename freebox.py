@@ -111,7 +111,7 @@ class FbxCnx:
             wait (int, optional): seconds before timeout. Defaults to REGISTER_TMOUT.
 
         Returns:
-            str: "app_token" if success else "error message"
+            str: "app_token" if success else empty string
         """
         data = {
             'app_id': app_id,
@@ -122,14 +122,17 @@ class FbxCnx:
         response = self._request('login/authorize/', 'POST', None, data)
         status = 'pending'
         if not response['success'] and response['msg']:
-            return False or f"Registration error: {response['msg']}"
-        track_id, app_token = response['result']['track_id'], response['result']['app_token']
-        while status != 'granted' and wait != 0:
-            status = self._request(f"login/authorize/{track_id}")
-            status = status['result']['status']
-            wait = wait - 1
-            time.sleep(1)
-        return status == 'granted' and app_token
+            Domoticz.Error(f"Registration error: {response['msg']}")
+        else :
+            track_id, app_token = response['result']['track_id'], response['result']['app_token']
+            while status != 'granted' and wait != 0:
+                status = self._request(f"login/authorize/{track_id}")
+                status = status['result']['status']
+                wait = wait - 1
+                time.sleep(1)
+        if status == 'granted':
+            return app_token
+        return ""
 
     def _mksession(self, app_id, app_token):
         """
@@ -246,22 +249,27 @@ class FbxApp(FbxCnx):
         try:
             ls_disk = self.get('storage/disk/')
             if 'result' in ls_disk:  # /!\ Freebox mini 4K don't have any disk
-                for disk in ls_disk['result']:
-                    if 'partitions' in disk:  # /!\ Freebox mini 4K don't have any disk
-                        for partition in disk['partitions']:
-                            label = partition['label']
-                            used = partition['used_bytes']
-                            total = partition['total_bytes']
-                            Domoticz.Debug('Usage of disk "' + label + '": ' +
-                                           str(used) + '/' + str(total) + ' bytes')
-                            if total > 0:
-                                percent = used / total * 100
-                                result.update(
-                                    {str(label): str(round(percent, 2))})
+                ls_disk = ls_disk['result']
+            else :
+                ls_disk = {}
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('API Error ("storage/disk/"): ' + error.msg)
         except timeout:
             Domoticz.Error('Timeout when call ("storage/disk/")')
+        else :
+            for disk in ls_disk:
+                if not 'partitions' in disk:  # /!\ If disk don't have any partition
+                    continue
+                for partition in disk['partitions']:
+                    label = partition['label']
+                    used = partition['used_bytes']
+                    total = partition['total_bytes']
+                    Domoticz.Debug('Usage of disk "' + label + '": ' +
+                                   str(used) + '/' + str(total) + ' bytes')
+                    if total > 0:
+                        percent = used / total * 100
+                        result.update(
+                            {str(label): str(round(percent, 2))})
         return result
 
     def get_name_from_macaddress(self, p_macaddress):
@@ -310,7 +318,7 @@ class FbxApp(FbxCnx):
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('API Error ("lan/browser/pub/"): ' + error.msg)
         except timeout:
-            Domoticz.Error('Timeout')  # False if Error occured
+            Domoticz.Error('Timeout')  # False if Error occurred
         return result
 
     def online_devices(self):
@@ -333,7 +341,7 @@ class FbxApp(FbxCnx):
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('API Error ("lan/browser/pub/"): ' + error.msg)
         except timeout:
-            Domoticz.Error('Timeout')  # Empty list if Error occured
+            Domoticz.Error('Timeout')  # Empty list if Error occurred
         return result
 
     def alarminfo(self):  # Only on Freebox Delta
@@ -423,7 +431,7 @@ class FbxApp(FbxCnx):
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('API Error ("home/tileset/all"): ' + error.msg)
         except timeout:
-            Domoticz.Error('Timeout')  # Empty list if Error occured
+            Domoticz.Error('Timeout')  # Empty list if Error occurred
         return result
 
     def connection_rate(self):
@@ -431,19 +439,19 @@ class FbxApp(FbxCnx):
         Get upload and download speed rate (of WAN Interface)
 
         Returns:
-            (dict of str: str): {rate_down: rate, rate_up: rate} (Ko/s)
+            (dict of str: str): {rate_down: rate, rate_up: rate} (ko/s)
         """
         result = {}
         try:
             connection = self.get('connection/')
             result.update({str('rate_down'): str(
-                connection['result']['rate_down']/1024/8)})
+                connection['result']['rate_down']/1024)})
             result.update({str('rate_up'): str(
-                connection['result']['rate_up']/1024/8)})
+                connection['result']['rate_up']/1024)})
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('API Error ("connection/"): ' + error.msg)
         except timeout:
-            Domoticz.Error('Timeout')  # Empty list if Error occured
+            Domoticz.Error('Timeout')  # Empty list if Error occurred
         return result
 
     def wan_state(self):
@@ -465,7 +473,7 @@ class FbxApp(FbxCnx):
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('API Error ("connection/"): ' + error.msg)
         except timeout:
-            Domoticz.Error('Timeout')  # None if Error occured
+            Domoticz.Error('Timeout')  # None if Error occurred
         return state
 
     def wifi_state(self):
@@ -487,7 +495,7 @@ class FbxApp(FbxCnx):
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('API Error ("wifi/config/"): ' + error.msg)
         except timeout:
-            Domoticz.Error('Timeout')  # None if Error occured
+            Domoticz.Error('Timeout')  # None if Error occurred
         return enabled
 
     def wifi_enable(self, switch_on):
@@ -674,9 +682,8 @@ class FbxApp(FbxCnx):
             except timeout:
                 Domoticz.Error('Timeout')
             else:
-                if response['success']:
-                    if response['result']['power_state']:
-                        status = True if response['result']['power_state'] == 'running' else False
+                if response['success'] and response['result']['power_state']:
+                    status = True if response['result']['power_state'] == 'running' else False
             Domoticz.Debug(f"Is watching TV{uid}? : {status}")
             return status
 
@@ -689,7 +696,7 @@ class FbxApp(FbxCnx):
             except (urllib.error.HTTPError, urllib.error.URLError) as error:
                 Domoticz.Error('TV Remote error ("' + url + '"): ' + error.msg)
             except timeout:
-                Domoticz.Error('Timeout')  # None if Error occured
+                Domoticz.Error('Timeout')  # None if Error occurred
             return response
 
         def shutdown(self, uid, remote_code):
