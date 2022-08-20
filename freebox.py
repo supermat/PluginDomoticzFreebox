@@ -276,6 +276,15 @@ class FbxApp(FbxCnx):
             percent = value / total * 100
         return round(percent, around)
 
+    def ls_devices(self):
+        """
+        List of devices connected to the Freebox server
+
+        Returns:
+            (dict of str: str): {device: values}
+        """
+        return self.call('lan/browser/pub/')
+
     def ls_storage(self):
         """
         List storages attached to the Freebox server
@@ -309,7 +318,7 @@ class FbxApp(FbxCnx):
             str: device name if @mac is know or None
         """
         result = None
-        ls_devices = self.call('lan/browser/pub/')
+        ls_devices = self.ls_devices()
         for device in ls_devices:
             macaddress = device['id']
             if ("ETHER-" + p_macaddress.upper()) == macaddress.upper():
@@ -327,7 +336,7 @@ class FbxApp(FbxCnx):
             bool: True if reachable else False
         """
         result = False
-        ls_devices = self.call('lan/browser/pub/')
+        ls_devices = self.ls_devices()
         for device in ls_devices:
             macaddress = device['id']
             if ("ETHER-" + p_macaddress.upper()) == macaddress.upper():
@@ -345,7 +354,7 @@ class FbxApp(FbxCnx):
             (dict of str: str): {macaddress: name}
         """
         result = {}
-        ls_devices = self.call('lan/browser/pub/')
+        ls_devices = self.ls_devices()
         for device in ls_devices:
             name = device['primary_name']
             reachable = device['reachable']
