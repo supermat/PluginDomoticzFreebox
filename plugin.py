@@ -88,7 +88,7 @@ class FreeboxPlugin:
     freebox_url = SCHEME + HOST + ":" + PORT
     remote_code_tv1 = ""
     remote_code_tv2 = ""
-    
+
     _refresh_interval = 60
     _tick = 0
 
@@ -662,7 +662,8 @@ class FreeboxPlugin:
         the failure.
         This callback is not called for connectionless Transports such as UDP/IP.
         """
-        Domoticz.Log("onConnect called")      
+        Domoticz.Log(f"onConnect called: \
+            Connection={Connection}, Status={Status}, Description={Description}")
 
     def onMessage(self, Connection, Data, Status, Extra):
         """
@@ -674,16 +675,15 @@ class FreeboxPlugin:
         structure (such as HTTP or ICMP), in that case Data will be a Dictionary containing
         Protocol specific details such as Status and Headers.
         """
-        Domoticz.Log(f"onMessage called for Connection: {Connection}, \
-                     Data: {Data}, Status: {Status}, Extra: {Extra}")
+        Domoticz.Log(f"onMessage called for Connection={Connection}, \
+                     Data={Data}, Status={Status}, Extra={Extra}")
 
     def onCommand(self, Unit, Command, Level, Hue):
         """
         Called by Domoticz in response to a script or Domoticz Web API call sending a command
         to a Unit in the Device's Units dictionary
         """
-        Domoticz.Log("onCommand called for Unit " + str(Unit) +
-                     ": Parameter '" + str(Command) + "', Level: " + str(Level) + ", Hue: " + str(Hue))
+        Domoticz.Log(f"onCommand called for Unit={Unit}, Command={Command}, Level={Level}, Hue={Hue}")
         properties = self.return_properties_from_id(Unit)
         device = self.return_device_from_properties(properties)
         name = self.return_name_from_properties(properties)
@@ -706,8 +706,8 @@ class FreeboxPlugin:
         contain the notification details. Hardware that can handle notifications should
         be notified as required.
         """
-        Domoticz.Log("Notification: " + Name + ", " + Subject + ", " + Text +
-                     ", " + Status + ", " + str(Priority) + ", " + Sound + ", " + ImageFile)
+        Domoticz.Log(f"Notification: {Name}, Subject={Subject}, Text={Text}, Status={Status}, \
+            Priority={Priority}, Sound={Sound}, ImageFile={ImageFile}")
 
     def onDisconnect(self, Connection):
         """
