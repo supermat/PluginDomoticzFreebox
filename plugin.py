@@ -242,13 +242,11 @@ class FreeboxPlugin:
                             Devices[unit_id].BatteryLevel != battery_level)
                 )
                 ):
-                    Domoticz.Debug("Le dipositif de type0 " + device.value + " associé à " +
-                                   name + " a été mis à jour " + str(n_value) + "/" + str(s_value) +
-                                   "/"+str(Devices[unit_id].BatteryLevel) + "/" + str(battery_level))
                     Devices[unit_id].Update(
                         nValue=n_value, sValue=s_value, BatteryLevel=battery_level)
                     Domoticz.Debug("Le dipositif de type " + device.value + " associé à " +
-                                   name + " a été mis à jour " + str(n_value) + "/" + str(s_value))
+                                   name + " a été mis à jour " + str(n_value) + "/" + str(s_value) +
+                                   "/"+str(Devices[unit_id].BatteryLevel) + "/" + str(battery_level))
                 # Test if PRESENCE are already up-to-date
                 elif device.value != self.Device.PRESENCE.value \
                         or (
@@ -323,6 +321,18 @@ class FreeboxPlugin:
             Domoticz.Log("Token déjà présent. OK.")
         return True if self.token else False
 
+    def new_device(self, device, category, name):
+        """
+        Add a new device in Domoticz list
+
+        Args:
+            device (device): Domoticz device
+            category (str): name of device's category
+            value (str): name of device
+        """
+        device.Create()
+        Domoticz.Log(f"Nouveau dispositif: '{category}' -> '{name}'")
+
     def _create_devices_reboot(self):
         # Create Reboot server switch
         unit_id = self.return_unit_id(
@@ -333,8 +343,7 @@ class FreeboxPlugin:
                 Name="Reboot Server",
                 TypeName="Switch"
                 )
-            device.Create()
-            Domoticz.Log(f"Nouveau dispositif: '{self.Device.COMMAND.value}' -> 'REBOOT'")
+            self.new_device(device, self.Device.COMMAND.value, 'REBOOT')
 
     def _create_devices_storages(self, f):
         # Creation of disk devices
@@ -346,8 +355,7 @@ class FreeboxPlugin:
                     Unit=unit_id,
                     Name="Occupation " + disk,
                     TypeName="Percentage")
-                device.Create()
-                Domoticz.Log(f"Nouveau dispositif: '{self.Device.DISK.value}' -> '{disk}'")
+                self.new_device(device, self.Device.DISK.value, disk)
                 # Unfortunately the image in the Percentage device can not be changed. Use Custom device!
                 # Domoticz.Device(Unit=_UNIT_USAGE, Name=Parameters["Address"], TypeName="Custom", Options={"Custom": "1;%"}, Image=3, Used=1).Create()
             Domoticz.Log(f"L'espace disque de '{disk}' est occupé à {value}%")
@@ -366,10 +374,7 @@ class FreeboxPlugin:
                     Options={"Custom": "1;ko/s"},
                     Used=1
                 )
-                device.Create()
-                Domoticz.Log(
-                    f"Nouveau dispositif: '{self.Device.CONNECTION_RATE.value}' -> '{RATE_TYPE[rate]}'"
-                    )
+                self.new_device(device, self.Device.CONNECTION_RATE.value, RATE_TYPE[rate])
             Domoticz.Log(f"Le débit WAN en '{RATE_TYPE[rate]}' est de {value} ko/s")
             self.update_device(self.Device.CONNECTION_RATE, rate, int(float(value)), str(value))
 
@@ -387,8 +392,7 @@ class FreeboxPlugin:
                     Name=name,
                     TypeName="Temperature"
                     )
-                device.Create()
-                Domoticz.Log(f"Nouveau dispositif: '{self.Device.SYSTEM_SENSOR.value}' -> '{name}'")
+                self.new_device(device, self.Device.SYSTEM_SENSOR.value, name)
             Domoticz.Log(f"La sonde '{name}' affiche {value}°C")
             self.update_device(self.Device.SYSTEM_SENSOR, uid, value, str(value))
 
@@ -403,13 +407,11 @@ class FreeboxPlugin:
                 if (alarminfo[alarm_device]['type']) == 'alarm_control' or (alarminfo[alarm_device]['type']) == 'dws':
                     device = Domoticz.Device(
                         Unit=keyunit, Name=alarminfo[alarm_device]['label'], TypeName="Switch", Switchtype=0)
-                    device.Create()
-                    Domoticz.Log(f"Nouveau dispositif: '{self.Device.ALARM.value}' -> '{alarminfo[alarm_device]['label']}'")
+                    self.new_device(device, self.Device.ALARM.value, alarminfo[alarm_device]['label'])
                 elif (alarminfo[alarm_device]["type"]) == 'pir':
                     device = Domoticz.Device(
                         Unit=keyunit, Name=alarminfo[alarm_device]["label"], TypeName="Switch", Switchtype=8)
-                    device.Create()
-                    Domoticz.Log(f"Nouveau dispositif: '{self.Device.ALARM.value}' -> '{alarminfo[alarm_device]['label']}'")
+                    self.new_device(device, self.Device.ALARM.value, alarminfo[alarm_device]['label'])
 
     def _create_devices_presence(self, f):
         # Create presence sensor
@@ -429,10 +431,7 @@ class FreeboxPlugin:
                             Unit=unit_id,
                             Name="Presence " + name,
                             TypeName="Switch")
-                        device.Create()
-                        Domoticz.Log(
-                            f"Nouveau dispositif: '{self.Device.PRESENCE.value}' -> '{name}'"
-                            )
+                        self.new_device(device, self.Device.PRESENCE.value, name)
                     presence = 1 if f.reachable_macaddress(macaddress) else 0
                     Domoticz.Log(
                         f"L'équipement '{name}' est actuellement {PRESENCE_STATE[presence]}"
@@ -450,8 +449,7 @@ class FreeboxPlugin:
                 Name="WIFI On/Off",
                 TypeName="Switch"
                 )
-            device.Create()
-            Domoticz.Log(f"Nouveau dispositif: '{self.Device.COMMAND.value}' -> 'WIFI'")
+            self.new_device(device, self.Device.COMMAND.value, 'WIFI')
         Domoticz.Log("Le WIFI est " + LINK_STATE[wifi_state])
         self.update_device(self.Device.COMMAND, "WIFI", wifi_state, str(wifi_state))
 
@@ -466,8 +464,7 @@ class FreeboxPlugin:
                 Name="WAN Status",
                 TypeName="Switch"
                 )
-            device.Create()
-            Domoticz.Log(f"Nouveau dispositif: '{self.Device.COMMAND.value}' -> 'WANStatus'")
+            self.new_device(device, self.Device.COMMAND.value, 'WANStatus')
         Domoticz.Log("La connexion Internet est " + LINK_STATE[wan_state])
         self.update_device(self.Device.COMMAND, "WANStatus", wan_state, str(wan_state))
 
@@ -487,8 +484,7 @@ class FreeboxPlugin:
                     Name=name,
                     TypeName="Switch"
                     )
-                device.Create()
-                Domoticz.Log(f"Nouveau dispositif: '{self.Device.PLAYER.value}' -> '{name}'")
+                self.new_device(device, self.Device.PLAYER.value, name)
             Domoticz.Log(f"Le player TV{uid} est " + POWER_STATE[player_state])
             self.update_device(self.Device.PLAYER, unit_name, player_state, str(player_state))
 
@@ -505,8 +501,7 @@ class FreeboxPlugin:
                 Options={"Custom": "1;s"},
                 Used=1
                 )
-            device.Create()
-            Domoticz.Log(f"Nouveau dispositif: '{self.Device.PRECORD.value}' -> 'NextPrecord'")
+            self.new_device(device, self.Device.PRECORD.value, 'NextPrecord')
         Domoticz.Log(self._str_precode_state(timestamp))
         self.update_device(self.Device.PRECORD, "NextPrecord", timestamp, str(timestamp))
 

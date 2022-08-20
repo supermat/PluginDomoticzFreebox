@@ -251,9 +251,8 @@ class FbxApp(FbxCnx):
         result = {}
         try:
             api_result = self.get(path)
-            if api_result['success']:
-                if 'result' in api_result:
-                    result = api_result['result']
+            if api_result['success'] and 'result' in api_result:
+                result = api_result['result']
         except (urllib.error.HTTPError, urllib.error.URLError) as error:
             Domoticz.Error('API Error ("' + path + '"): ' + error.msg)
         except timeout:
