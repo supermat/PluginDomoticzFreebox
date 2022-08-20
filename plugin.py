@@ -653,7 +653,7 @@ class FreeboxPlugin:
         """
         Domoticz.Log("onStop called")
 
-    def onConnect(self, Connection, Status, Description):
+    def onConnect(self, connection, status, description):
         """
         Called when connection to remote device either succeeds or fails,
         or when a connection is made to a listening Address:Port.
@@ -663,9 +663,9 @@ class FreeboxPlugin:
         This callback is not called for connectionless Transports such as UDP/IP.
         """
         Domoticz.Log(f"onConnect called: \
-            Connection={Connection}, Status={Status}, Description={Description}")
+            Connection={connection}, Status={status}, Description={description}")
 
-    def onMessage(self, Connection, Data, Status, Extra):
+    def onMessage(self, connection, data, status, extra):
         """
         Called when a single, complete message is received from the external hardware
         (as defined by the Protocol setting). This callback should be used to interpret
@@ -675,47 +675,47 @@ class FreeboxPlugin:
         structure (such as HTTP or ICMP), in that case Data will be a Dictionary containing
         Protocol specific details such as Status and Headers.
         """
-        Domoticz.Log(f"onMessage called for Connection={Connection}, \
-                     Data={Data}, Status={Status}, Extra={Extra}")
+        Domoticz.Log(f"onMessage called for Connection={connection}, \
+                     Data={data}, Status={status}, Extra={extra}")
 
-    def onCommand(self, Unit, Command, Level, Hue):
+    def onCommand(self, unit, command, level, hue):
         """
         Called by Domoticz in response to a script or Domoticz Web API call sending a command
         to a Unit in the Device's Units dictionary
         """
-        Domoticz.Log(f"onCommand called for Unit={Unit}, Command={Command}, Level={Level}, Hue={Hue}")
-        properties = self.return_properties_from_id(Unit)
+        Domoticz.Log(f"onCommand called for Unit={unit}, Command={command}, Level={level}, Hue={hue}")
+        properties = self.return_properties_from_id(unit)
         device = self.return_device_from_properties(properties)
         name = self.return_name_from_properties(properties)
         try:
             f = freebox.FbxApp("idPluginDomoticz", self.token, host=self.freebox_url)
             if device == self.Device.COMMAND.value:
                 if name == "REBOOT": self._switch_reboot(f)
-                elif name == "WIFI": self._switch_wifi(f, Command)
+                elif name == "WIFI": self._switch_wifi(f, command)
             elif device == self.Device.PLAYER.value:
-                self._switch_player(f, Command, str(name)[-1:])
+                self._switch_player(f, command, str(name)[-1:])
 
         except Exception as e:
             Domoticz.Error(f"onHeartbeat error: {e}")
             Domoticz.Error(traceback.format_exc())
 
-    def onNotification(self, Name, Subject, Text, Status, Priority, Sound, ImageFile):
+    def onNotification(self, name, subject, text, status, priority, sound, image):
         """
         Called when any Domoticz device generates a notification.
         Name parameter is the device that generated the notification, the other parameters
         contain the notification details. Hardware that can handle notifications should
         be notified as required.
         """
-        Domoticz.Log(f"Notification: {Name}, Subject={Subject}, Text={Text}, Status={Status}, \
-            Priority={Priority}, Sound={Sound}, ImageFile={ImageFile}")
+        Domoticz.Log(f"Notification: {name}, Subject={subject}, Text={text}, Status={status}, \
+            Priority={priority}, Sound={sound}, ImageFile={image}")
 
-    def onDisconnect(self, Connection):
+    def onDisconnect(self, connection):
         """
         Called after the remote device is disconnected.
         Connection is the Domoticz Connection object associated with the event.
         This callback is not called for connectionless Transports such as UDP/IP. 
         """
-        Domoticz.Log(f"onDisconnect called for {Connection}")
+        Domoticz.Log(f"onDisconnect called for {connection}")
 
     def onHeartbeat(self):
         """
