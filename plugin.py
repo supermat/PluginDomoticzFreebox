@@ -51,7 +51,7 @@ import os
 import datetime
 import time
 import traceback
-# from data import * # Only enable when debug mode
+# Only enable when debug mode add "from data import"
 from enum import Enum
 import Domoticz
 
@@ -175,7 +175,7 @@ class FreeboxPlugin:
                 if value == uid:
                     return (device, name)
         return
-    
+
     def return_device_from_properties(self, properties):
         """
         Return device type from properties
@@ -189,7 +189,7 @@ class FreeboxPlugin:
         if len(properties) == 2 :
             return properties[0]
         return
-    
+
     def return_name_from_properties(self, properties):
         """
         Return name from properties
@@ -203,7 +203,7 @@ class FreeboxPlugin:
         if len(properties) == 2 :
             return properties[1]
         return
-        
+
     def unit_exist(self, device, name):
         """
         Find device ID number from is type and name
@@ -280,7 +280,7 @@ class FreeboxPlugin:
             self._update_device(unit_id, device, name, 'update', n_value, s_value)
         else:
             self._update_device(unit_id, device, name, 'up-to-date')
-                        
+
     def init(self):
         """
         Initialize the connection with Freebox server.
@@ -662,7 +662,7 @@ class FreeboxPlugin:
         the failure.
         This callback is not called for connectionless Transports such as UDP/IP.
         """
-        Domoticz.Log("onConnect called")
+        Domoticz.Log("onConnect called")      
 
     def onMessage(self, Connection, Data, Status, Extra):
         """
@@ -672,9 +672,10 @@ class FreeboxPlugin:
         Connection is the Domoticz Connection object associated with the event.
         Data is normally a ByteArray except where the Protocol for the Connection has
         structure (such as HTTP or ICMP), in that case Data will be a Dictionary containing
-        Protocol specific details such as Status and Headers. 
+        Protocol specific details such as Status and Headers.
         """
-        Domoticz.Log("onMessage called")
+        Domoticz.Log(f"onMessage called for Connection: {Connection}, \
+                     Data: {Data}, Status: {Status}, Extra: {Extra}")
 
     def onCommand(self, Unit, Command, Level, Hue):
         """
@@ -682,7 +683,7 @@ class FreeboxPlugin:
         to a Unit in the Device's Units dictionary
         """
         Domoticz.Log("onCommand called for Unit " + str(Unit) +
-                     ": Parameter '" + str(Command) + "', Level: " + str(Level))
+                     ": Parameter '" + str(Command) + "', Level: " + str(Level) + ", Hue: " + str(Hue))
         properties = self.return_properties_from_id(Unit)
         device = self.return_device_from_properties(properties)
         name = self.return_name_from_properties(properties)
@@ -705,8 +706,8 @@ class FreeboxPlugin:
         contain the notification details. Hardware that can handle notifications should
         be notified as required.
         """
-        Domoticz.Log("Notification: " + Name + "," + Subject + "," + Text +
-                     "," + Status + "," + str(Priority) + "," + Sound + "," + ImageFile)
+        Domoticz.Log("Notification: " + Name + ", " + Subject + ", " + Text +
+                     ", " + Status + ", " + str(Priority) + ", " + Sound + ", " + ImageFile)
 
     def onDisconnect(self, Connection):
         """
@@ -714,7 +715,7 @@ class FreeboxPlugin:
         Connection is the Domoticz Connection object associated with the event.
         This callback is not called for connectionless Transports such as UDP/IP. 
         """
-        Domoticz.Log("onDisconnect called")
+        Domoticz.Log(f"onDisconnect called for {Connection}")
 
     def onHeartbeat(self):
         """
