@@ -174,7 +174,6 @@ class FreeboxPlugin:
             for name, value in dict_devices[device].items():
                 if value == uid:
                     return (device, name)
-        return
 
     def return_device_from_properties(self, properties):
         """
@@ -188,7 +187,6 @@ class FreeboxPlugin:
         """
         if len(properties) == 2 :
             return properties[0]
-        return
 
     def return_name_from_properties(self, properties):
         """
@@ -202,7 +200,6 @@ class FreeboxPlugin:
         """
         if len(properties) == 2 :
             return properties[1]
-        return
 
     def unit_exist(self, device, name):
         """
