@@ -456,9 +456,9 @@ class FbxApp(FbxCnx):
         result = {}
         connection = self.call('connection/')
         if connection['rate_down']:
-            result.update({str('rate_down'): str(connection['rate_down']/1024)})
+            result.update({str('rate_down'): str(round(connection['rate_down']/1024,2))})
         if connection['rate_up']:
-            result.update({str('rate_up'): str(connection['rate_up']/1024)})
+            result.update({str('rate_up'): str(round(connection['rate_up']/1024,2))})
         return result
 
     def wan_state(self):
